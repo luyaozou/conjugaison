@@ -12,10 +12,6 @@ __pycache__/
 *.db
 *.png
 *.psj
-*/test/trial/*
-*/test/unit/unit_test*.db
-*/test/unit/unit_test*.cat
-test_*.py
 
 # C extensions
 *.so
