@@ -2,7 +2,7 @@
 
 import unittest
 
-from dictionary import conjug
+from dictionary import conjug, conjug_all
 
 
 class TestConjug(unittest.TestCase):
@@ -70,17 +70,17 @@ class TestConjug(unittest.TestCase):
             "connaître": ("je connais", "tu connais", "il connaît", "elle connaît",
                           "nous connaissons", "vous connaissez", "ils connaissent", "elles connaissent"),
             "courir": ("je cours", "tu cours", "il court", "elle court",
-                       "nous courons", "vous courez", "ils courent", "elle courent"),
+                       "nous courons", "vous courez", "ils courent", "elles courent"),
             "couvrir": ("je couvre", "tu couvres", "il couvre", "elle couvre",
                         "nous couvrons", "vous couvrez", "ils couvrent", "elles couvrent"),
             "croire": ("je crois", "tu crois", "il croit", "elle croit",
                        "nous croyons", "vous croyez", "ils croient", "elles croient"),
             "cueillir": ("je cueille", "tu cueilles", "il cueille", "elle cueille",
-                         "nous cueillons", "vous cueillez", "ils cueillont", "elles cueillent"),
+                         "nous cueillons", "vous cueillez", "ils cueillent", "elles cueillent"),
             "cuire": ("je cuis", "tu cuis", "il cuit", "elle cuit",
                       "nous cuisons", "vous cuisez", "ils cuisent", "elles cuisent",),
-            "décevoire": ("je déçois", "tu déçois", "il déçoit", "elle déçoit",
-                          "nous décevons", "vous décevez", "ils déçoivent", "elles déçoivent",),
+            "décevoir": ("je déçois", "tu déçois", "il déçoit", "elle déçoit",
+                         "nous décevons", "vous décevez", "ils déçoivent", "elles déçoivent",),
             "découvrir": ("je découvre", "tu découvres", "il découvre", "elle découvre",
                           "nous découvrons", "vous découvrez", "ils découvrent", "elles découvrent",),
             "déduire": ("je déduis", "tu déduis", "il déduit", "elle déduit",
@@ -111,14 +111,14 @@ class TestConjug(unittest.TestCase):
                       "nous faisons", "vous faites", "ils font", "elles font",),
             "falloir": ("", "", "il faut", "", "", "", "", ""),
             "frire": ("je fris", "tu fris", "il frit", "", "", "", "", ""),
-            "inscrire": ("j'inscris", "tu inscris", "il inscrit", "il inscrit",
-                         "nous inscrivons", "vous inscrivez", "ils inscrivent", "ils inscrivent",),
+            "inscrire": ("j'inscris", "tu inscris", "il inscrit", "elle inscrit",
+                         "nous inscrivons", "vous inscrivez", "ils inscrivent", "elles inscrivent",),
             "s'inscrire": ("je m'inscris", "tu t'inscris", "il s'inscrit", "elle s'inscrit",
                            "nous nous inscrivons", "vous vous inscrivez", "ils s'inscrivent", "elles s'inscrivent",),
             "joindre": ("je joins", "tu joins", "il joint", "elle joint",
                         "nous joignons", "vous joignez", "ils joignent", "elles joignent",),
-            "lire": ("je lis", "tu lis", "il lit", "il lit",
-                     "nous lisons", "vous lisez", "ils lisent", "ils lisent",),
+            "lire": ("je lis", "tu lis", "il lit", "elle lit",
+                     "nous lisons", "vous lisez", "ils lisent", "elles lisent",),
             "mettre": ("je mets", "tu mets", "il met", "elle met",
                        "nous mettons", "vous mettez", "ils mettent", "elles mettent",),
             "mourir": ("je meurs", "tu meurs", "il meurt", "elle meurt",
@@ -200,8 +200,8 @@ class TestConjug(unittest.TestCase):
                       "nous venons", "vous venez", "ils viennent", "elles viennent",),
             "vivre": ("je vis", "tu vis", "il vit", "elle vit",
                       "nous vivons", "vous vivez", "ils vivent", "elles vivent",),
-            "voire": ("je vois", "tu vois", "il voit", "elle voit",
-                      "nous voyons", "vous voyez", "ils voient", "elles voient",),
+            "voir": ("je vois", "tu vois", "il voit", "elle voit",
+                     "nous voyons", "vous voyez", "ils voient", "elles voient",),
             "vouloir": ("je veux", "tu veux", "il veut", "elle veut",
                         "nous voulons", "vous voulez", "ils veulent", "elles veulent",),
         }
@@ -209,7 +209,9 @@ class TestConjug(unittest.TestCase):
         for root, ans_tuple in answer.items():
             for i, ans in enumerate(ans_tuple):
                 test_ans = conjug(root, "présent", "indicatif", i)
-                self.assertEqual(test_ans, ans)
+                self.assertEqual(ans, test_ans)
+            test_ans_tuple = conjug_all(root, "présent", "indicatif")
+            self.assertTupleEqual(ans_tuple, test_ans_tuple)
 
     def test_passe_compose_indicatif(self):
         answer = {
@@ -289,8 +291,8 @@ class TestConjug(unittest.TestCase):
                          "nous avons cueilli", "vous avez cueilli", "ils ont cueilli", "elles ont cueilli"),
             "cuire": ("j'ai cuit", "tu as cuit", "il a cuit", "elle a cuit",
                       "nous avons cuit", "vous avez cuit", "ils ont cuit", "elles ont cuit",),
-            "décevoire": ("j'ai déçu", "tu as déçu", "il a déçu", "elle a déçu",
-                          "nous avons déçu", "vous avez déçu", "ils ont déçu", "elles ont déçu",),
+            "décevoir": ("j'ai déçu", "tu as déçu", "il a déçu", "elle a déçu",
+                         "nous avons déçu", "vous avez déçu", "ils ont déçu", "elles ont déçu",),
             "découvrir": ("j'ai découvert", "tu as découvert", "il a découvert", "elle a découvert",
                           "nous avons découvert", "vous avez découvert", "ils ont découvert", "elles ont découvert"),
             "déduire": ("j'ai déduit", "tu as déduit", "il a déduit", "elle a déduit",
@@ -323,8 +325,7 @@ class TestConjug(unittest.TestCase):
             "faire": ("j'ai fait", "tu as fait", "il a fait", "elle a fait",
                       "nous avons fait", "vous avez fait", "ils ont fait", "elles ont fait",),
             "falloir": ("", "", "il a fallu", "", "", "", "", ""),
-            "frire": ("j'ai frit", "tu as frit", "il a frit", "elle a frit",
-                      "nous avons frit", "vous avez frit", "ils ont frit", "elles ont frit",),
+            "frire": ("j'ai frit", "tu as frit", "il a frit", "", "", "", "", ""),
             "inscrire": ("j'ai inscrit", "tu as inscrit", "il a inscrit", "elle a inscrit",
                          "nous avons inscrit", "vous avez inscrit", "ils ont inscrit", "elles ont inscrit",),
             "s'inscrire": ("je me suis inscrit(e)", "tu t'es inscrit(e)",
@@ -390,8 +391,8 @@ class TestConjug(unittest.TestCase):
                        "nous avons senti", "vous avez senti", "ils ont senti", "elles ont senti",),
             "servir": ("j'ai servi", "tu as servi", "il a servi", "elle a servi",
                        "nous avons servi", "vous avez servi", "ils ont servi", "elles ont servi",),
-            "sortir": ("je suis sorti(e)", "tu es sorti(e)", "il est sorti", "il est sortie",
-                       "nous sommes sorti(e)s", "vous êtes sorti(e)s", "ils sont sortis", "ils sont sorties",),
+            "sortir": ("je suis sorti(e)", "tu es sorti(e)", "il est sorti", "elle est sortie",
+                       "nous sommes sorti(e)s", "vous êtes sorti(e)s", "ils sont sortis", "elles sont sorties",),
             "souffrir": ("j'ai souffert", "tu as souffert", "il a souffert", "elle a souffert",
                          "nous avons souffert", "vous avez souffert", "ils ont souffert", "elles ont souffert",),
             "suffire": ("j'ai suffi", "tu as suffi", "il a suffi", "elle a suffi",
@@ -409,22 +410,24 @@ class TestConjug(unittest.TestCase):
             "traduire": ("j'ai traduit", "tu as traduit", "il a traduit", "elle a traduit",
                          "nous avons traduit", "vous avez traduit", "ils ont traduit", "elles ont traduit",),
             "valoir": ("j'ai valu", "tu as valu", "il a valu", "elle a valu",
-                       "nous avons valu", "vous avezvalu", "ils ont valu", "elles ont valu",),
+                       "nous avons valu", "vous avez valu", "ils ont valu", "elles ont valu",),
             "vendre": ("j'ai vendu", "tu as vendu", "il a vendu", "elle a vendu",
                        "nous avons vendu", "vous avez vendu", "ils ont vendu", "elles ont vendu",),
             "venir": ("je suis venu(e)", "tu es venu(e)", "il est venu", "elle est venue",
                       "nous sommes venu(e)s", "vous êtes venu(e)s", "ils sont venus", "elles sont venues",),
             "vivre": ("j'ai vécu", "tu as vécu", "il a vécu", "elle a vécu",
                       "nous avons vécu", "vous avez vécu", "ils ont vécu", "elles ont vécu",),
-            "voire": ("j'ai vu", "tu as vu", "il a vu", "elle a vu",
-                      "nous avons vu", "vous avez vu", "ils ont vu", "elles ont vu",),
+            "voir": ("j'ai vu", "tu as vu", "il a vu", "elle a vu",
+                     "nous avons vu", "vous avez vu", "ils ont vu", "elles ont vu",),
             "vouloir": ("j'ai voulu", "tu as voulu", "il a voulu", "elle a voulu",
                         "nous avons voulu", "vous avez voulu", "ils ont voulu", "elles ont voulu",),
         }
         for root, ans_tuple in answer.items():
             for i, ans in enumerate(ans_tuple):
                 test_ans = conjug(root, "passé composé", "indicatif", i)
-                self.assertEqual(test_ans, ans)
+                self.assertEqual(ans, test_ans)
+            test_ans_tuple = conjug_all(root, "passé composé", "indicatif")
+            self.assertTupleEqual(ans_tuple, test_ans_tuple)
 
     def test_imparfait_indicatif(self):
         answer = {
@@ -496,8 +499,8 @@ class TestConjug(unittest.TestCase):
                          "nous cueillions", "vous cueilliez", "ils cueillaient", "elles cueillaient"),
             "cuire": ("je cuisais", "tu cuisais", "il cuisait", "elle cuisait",
                       "nous cuisions", "vous cuisiez", "ils cuisaient", "elles cuisaient",),
-            "décevoire": ("je décevais", "tu décevais", "il décevait", "elle décevait",
-                          "nous décevions", "vous déceviez", "ils décevaient", "elles décevaient",),
+            "décevoir": ("je décevais", "tu décevais", "il décevait", "elle décevait",
+                         "nous décevions", "vous déceviez", "ils décevaient", "elles décevaient",),
             "découvrir": ("je découvrais", "tu découvrais", "il découvrait", "elle découvrait",
                           "nous découvrions", "vous découvriez", "ils découvraient", "elles découvraient"),
             "déduire": ("je déduisais", "tu déduisais", "il déduisait", "elle déduisait",
@@ -518,8 +521,8 @@ class TestConjug(unittest.TestCase):
                             "ils disparaissaient", "elles disparaissaient",),
             "dormir": ("je dormais", "tu dormais", "il dormait", "elle dormait",
                        "nous dormions", "vous dormiez", "ils dormaient", "elles dormaient",),
-            "érire": ("j'écrivais", "tu écrivais", "il écrivait", "elle écrivait",
-                      "nous écrivions", "vous écriviez", "ils écrivaient", "elles écrivaient",),
+            "écrire": ("j'écrivais", "tu écrivais", "il écrivait", "elle écrivait",
+                       "nous écrivions", "vous écriviez", "ils écrivaient", "elles écrivaient",),
             "enduire": ("j'enduisais", "tu enduisais", "il enduisait", "elle enduisait",
                         "nous enduisions", "vous enduisiez", "ils enduisaient", "elles enduisaient",),
             "entendre": ("j'entendais", "tu entendais", "il entendait", "elle entendait",
@@ -620,15 +623,17 @@ class TestConjug(unittest.TestCase):
                       "nous venions", "vous veniez", "ils venaient", "elles venaient",),
             "vivre": ("je vivais", "tu vivais", "il vivait", "elle vivait",
                       "nous vivions", "vous viviez", "ils vivaient", "elles vivaient",),
-            "voire": ("je voyais", "tu voyais", "il voyait", "elle voyait",
-                      "nous voyions", "vous voyiez", "ils voyaient", "elles voyaient",),
+            "voir": ("je voyais", "tu voyais", "il voyait", "elle voyait",
+                     "nous voyions", "vous voyiez", "ils voyaient", "elles voyaient",),
             "vouloir": ("je voulais", "tu voulais", "il voulait", "elle voulait",
                         "nous voulions", "vous vouliez", "ils voulaient", "elles voulaient",),
         }
         for root, ans_tuple in answer.items():
             for i, ans in enumerate(ans_tuple):
                 test_ans = conjug(root, "imparfait", "indicatif", i)
-                self.assertEqual(test_ans, ans)
+                self.assertEqual(ans, test_ans)
+            test_ans_tuple = conjug_all(root, "imparfait", "indicatif")
+            self.assertTupleEqual(ans_tuple, test_ans_tuple)
 
     def test_future_indicatif(self):
         answer = {
@@ -667,7 +672,7 @@ class TestConjug(unittest.TestCase):
             "s'habiller": ("je m'habillerai", "tu t'habilleras", "il s'habillera", "elle s'habillera",
                            "nous nous habillerons", "vous vous habillerez", "ils s'habilleront", "elles s'habilleront"),
             "s'asseoir": ("je m'asseyerai", "tu t'asseyeras", "il s'asseyera", "elle s'asseyera",
-                          "nous nous asseyerons", "vous vous asseyerez", "ils s'asseyerent", "elles s'asseyerent"),
+                          "nous nous asseyerons", "vous vous asseyerez", "ils s'asseyeront", "elles s'asseyeront"),
             "aller": ("j'irai", "tu iras", "il ira", "elle ira",
                       "nous irons", "vous irez", "ils iront", "elles iront"),
             "apercevoir": ("j'apercevrai", "tu apercevras", "il apercevra", "elle apercevra",
@@ -681,7 +686,7 @@ class TestConjug(unittest.TestCase):
             "avoir": ("j'aurai", "tu auras", "il aura", "elle aura",
                       "nous aurons", "vous aurez", "ils auront", "elles auront"),
             "boire": ("je boirai", "tu boiras", "il boira", "elle boira",
-                      "nous boirons", "vous boirez", "ils boiront", "elle boiront"),
+                      "nous boirons", "vous boirez", "ils boiront", "elles boiront"),
             "bouillir": ("je bouillirai", "tu bouilliras", "il bouillira", "elle bouillira",
                          "nous bouillirons", "vous bouillirez", "ils bouilliront", "elles bouilliront"),
             "comprendre": ("je comprendrai", "tu comprendras", "il comprendra", "elle comprendra",
@@ -696,12 +701,12 @@ class TestConjug(unittest.TestCase):
                         "nous couvrirons", "vous couvrirez", "ils couvriront", "elles couvriront"),
             "croire": ("je croirai", "tu croiras", "il croira", "elle croira",
                        "nous croirons", "vous croirez", "ils croiront", "elles croiront"),
-            "cueillir": ("je cueillerai", "tu cueilleras", "il cueillera", "il cueillera",
+            "cueillir": ("je cueillerai", "tu cueilleras", "il cueillera", "elle cueillera",
                          "nous cueillerons", "vous cueillerez", "ils cueilleront", "elles cueilleront"),
             "cuire": ("je cuirai", "tu cuiras", "il cuira", "elle cuira",
                       "nous cuirons", "vous cuirez", "ils cuiront", "elles cuiront",),
-            "décevoire": ("je décevrai", "tu décevras", "il décevra", "elle décevra",
-                          "nous décevrons", "vous décevrez", "ils décevront", "elles décevront",),
+            "décevoir": ("je décevrai", "tu décevras", "il décevra", "elle décevra",
+                         "nous décevrons", "vous décevrez", "ils décevront", "elles décevront",),
             "découvrir": ("je découvrirai", "tu découvriras", "il découvrira", "elle découvrira",
                           "nous découvrirons", "vous découvrirez", "ils découvriront", "elles découvriront"),
             "déduire": ("je déduirai", "tu déduiras", "il déduira", "elle déduira",
@@ -760,8 +765,8 @@ class TestConjug(unittest.TestCase):
                        "nous partirons", "vous partirez", "ils partiront", "elles partiront",),
             "peindre": ("je peindrai", "tu peindras", "il peindra", "elle peindra",
                         "nous peindrons", "vous peindrez", "ils peindront", "elles peindront",),
-            "pendre": ("je pendrai", "tu pendras", "il pendra", "il pendra",
-                       "nous pendrons", "vous pendrez", "ils pendront", "ils pendront",),
+            "pendre": ("je pendrai", "tu pendras", "il pendra", "elle pendra",
+                       "nous pendrons", "vous pendrez", "ils pendront", "elles pendront",),
             "percevoir": ("je percevrai", "tu percevras", "il percevra", "elle percevra",
                           "nous percevrons", "vous percevrez", "ils percevront", "elles percevront",),
             "perdre": ("je perdrai", "tu perdras", "il perdra", "elle perdra",
@@ -825,15 +830,17 @@ class TestConjug(unittest.TestCase):
                       "nous viendrons", "vous viendrez", "ils viendront", "elles viendront",),
             "vivre": ("je vivrai", "tu vivras", "il vivra", "elle vivra",
                       "nous vivrons", "vous vivrez", "ils vivront", "elles vivront",),
-            "voire": ("je verrai", "tu verras", "il verra", "elle verra",
-                      "nous verrons", "vous verrez", "ils verront", "elles verront",),
+            "voir": ("je verrai", "tu verras", "il verra", "elle verra",
+                     "nous verrons", "vous verrez", "ils verront", "elles verront",),
             "vouloir": ("je voudrai", "tu voudras", "il voudra", "elle voudra",
                         "nous voudrons", "vous voudrez", "ils voudront", "elles voudront",),
         }
         for root, ans_tuple in answer.items():
             for i, ans in enumerate(ans_tuple):
                 test_ans = conjug(root, "futur", "indicatif", i)
-                self.assertEqual(test_ans, ans)
+                self.assertEqual(ans, test_ans)
+            test_ans_tuple = conjug_all(root, "futur", "indicatif")
+            self.assertTupleEqual(ans_tuple, test_ans_tuple)
 
 
 if __name__ == '__main__':
