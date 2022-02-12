@@ -9,7 +9,7 @@ setup(name='conjugaison',
       packages=find_packages('.'),
       entry_points={
         'gui_scripts': [
-            'conjugaison = conjugaison:launch',
+            'conjugaison = app:launch',
         ]},
       install_requires=[
             'PyQt5>=5.10',

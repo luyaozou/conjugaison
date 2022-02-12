@@ -5,6 +5,9 @@
 _VOWELS = ('a', 'â', 'à', 'e', 'é', 'è', 'i', 'o', 'u')
 _DOUBLE_CONSONANTS = ('ch', 'gn',)
 
+# tense & moods currently available in the dictionray
+AVAILABLE_TENSE_MOODS = (0, 1, 2, 3)
+
 TENSE_MOODS = (
     ("présent", "indicatif"),
     ("passé composé", "indicatif"),
