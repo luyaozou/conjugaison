@@ -56,7 +56,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar = StatusBar(parent=self)
         self.setStatusBar(self.statusBar)
         self.statusBar.refresh(*self.db.num_expired_entries(self.config.enabled_tm_idx))
-
+        self.box1.sig_checked.connect(lambda: self.statusBar.refresh(
+                *self.db.num_expired_entries(self.config.enabled_tm_idx)))
+        self.box2.sig_checked.connect(lambda: self.statusBar.refresh(
+                *self.db.num_expired_entries(self.config.enabled_tm_idx)))
         menubar.actionConfig.triggered.connect(self._config)
         menubar.actionAddVoc.triggered.connect(self.dAddVoc.exec)
         menubar.actionBrowse.triggered.connect(self.dBrowse.exec)
@@ -90,6 +93,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 class Box1(QtWidgets.QGroupBox):
+
+    sig_checked = QtCore.pyqtSignal()
 
     def __init__(self, db, config, parent=None):
         super().__init__(parent)
@@ -199,6 +204,7 @@ class Box1(QtWidgets.QGroupBox):
             self.lblCk.setStyleSheet('font-size: 14pt; font: bold; color: #D63333')
         try:
             self.db.update_res('practice_forward', self._entry_id, txt_striped == self._answer)
+            self.sig_checked.emit()
         except TypeError:
             d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
                                       'Warning', 'No entry found')
@@ -206,6 +212,8 @@ class Box1(QtWidgets.QGroupBox):
 
 
 class Box2(QtWidgets.QGroupBox):
+
+    sig_checked = QtCore.pyqtSignal()
 
     def __init__(self, db, config, parent=None):
         super().__init__(parent)
@@ -309,6 +317,7 @@ class Box2(QtWidgets.QGroupBox):
             self.lblCk.setStyleSheet('font-size: 14pt; color: #D63333')
         try:
             self.db.update_res('practice_backward', self._entry_id, is_correct)
+            self.sig_checked.emit()
         except TypeError:
             d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
                                       'Warning', 'No entry to practice today')

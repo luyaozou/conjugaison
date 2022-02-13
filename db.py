@@ -79,6 +79,7 @@ class AppDB:
                 sql = """ UPDATE {:s} SET correct_num = (?) 
                 WHERE id = (?) """.format(tbl)
                 self._c.execute(sql, (-1, entry_id))
+        self._conn.commit()
 
     def check_exist(self, verb):
         """ Check if verb exists in glossary """
