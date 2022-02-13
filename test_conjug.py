@@ -842,6 +842,71 @@ class TestConjug(unittest.TestCase):
             test_ans_tuple = conjug_all(root, "futur", "indicatif")
             self.assertTupleEqual(ans_tuple, test_ans_tuple)
 
+    def test_present_conditionnel(self):
+
+        answer = {
+            "aimer": ("j'aimerais", "tu aimerais", "il aimerait", "elle aimerait",
+                      "nous aimerions", "vous aimeriez", "ils aimeraient", "elles aimeraient"),
+            "manger": ("je mangerais", "tu mangerais", "il mangerait", "elle mangerait",
+                       "nous mangerions", "vous mangeriez", "ils mangeraient", "elles mangeraient"),
+            "choisir": ("je choisirais", "tu choisirais", "il choisirait", "elle choisirait",
+                        "nous choisirions", "vous choisiriez", "ils choisiraient", "elles choisiraient"),
+            "aller": ("j'irais", "tu irais", "il irait", "elle irait",
+                      "nous irions", "vous iriez", "ils iraient", "elles iraient"),
+            "avoir": ("j'aurais", "tu aurais", "il aurait", "elle aurait",
+                      "nous aurions", "vous auriez", "ils auraient", "elles auraient"),
+            "être": ("je serais", "tu serais", "il serait", "elle serait",
+                     "nous serions", "vous seriez", "ils seraient", "elles seraient",),
+            "faire": ("je ferais", "tu ferais", "il ferait", "elle ferait",
+                      "nous ferions", "vous feriez", "ils feraient", "elles feraient",),
+            "falloir": ("", "", "il faudrait", "", "", "", "", ""),
+            "frire": ("je frirais", "tu frirais", "il frirait", "", "", "", "", ""),
+            "pleuvoir": ("", "", "il pleuvrait", "", "", "", "", ""),
+            "pouvoir": ("je pourrais", "tu pourrais", "il pourrait", "elle pourrait",
+                        "nous pourrions", "vous pourriez", "ils pourraient", "elles pourraient",),
+            "vouloir": ("je voudrais", "tu voudrais", "il voudrait", "elle voudrait",
+                        "nous voudrions", "vous voudriez", "ils voudraient", "elles voudraient",),
+        }
+        for root, ans_tuple in answer.items():
+            for i, ans in enumerate(ans_tuple):
+                test_ans = conjug(root, "présent", "conditionnel", i)
+                self.assertEqual(ans, test_ans)
+            test_ans_tuple = conjug_all(root, "présent", "conditionnel")
+            self.assertTupleEqual(ans_tuple, test_ans_tuple)
+
+    def test_present_imperatif(self):
+
+        answer = {
+            "aimer": ("", "aime", "", "", "aimons", "aimez", "", ""),
+            "manger": ("", "mange", "", "", "mangeons", "mangez", "", ""),
+            "partager": ("", "partage", "", "", "partageons", "partagez", "", ""),
+            "se coucher": ("", "couche-toi", "", "", "couchons-nous", "couchez-vous", "", ""),
+            "se passer": ("", "passe-toi", "", "", "passons-nous", "passez-vous", "", ""),
+            "s'habiller": ("", "habille-toi", "", "", "habillons-nous", "habillez-vous", "", ""),
+            "aller": ("", "va", "", "", "allons", "allez", "", ""),
+            "avoir": ("", "aie", "", "", "ayons", "ayez", "", ""),
+            "courir": ("", "cours", "", "", "courons", "courez", "", ""),
+            "couvrir": ("", "couvre", "", "", "couvrons", "couvrez", "", ""),
+            "croire": ("", "crois", "", "", "croyons", "croyez", "", ""),
+            "dire": ("", "dis", "", "", "disons", "dites", "", "",),
+            "dormir": ("", "dors", "", "", "dormons", "dormez", "", "",),
+            "être": ("", "sois", "", "", "soyons", "soyez", "", "",),
+            "faire": ("", "fais", "", "", "faisons", "faites", "", "",),
+            "offrir": ("", "offre", "", "", "offrons", "offrez", "", "",),
+            "ouvrir": ("", "ouvre", "", "", "ouvrons", "ouvrez", "", "",),
+            "pouvoir": ("", "", "", "", "", "", "", "",),
+            "savoir": ("", "sache", "", "", "sachons", "sachez", "", "",),
+            "vouloir": ("", "veuille", "", "", "veuillons", "veuillez", "", "",),
+            "falloir": ("", "", "", "", "", "", "", "",),
+            "pleuvoir": ("", "", "", "", "", "", "", "",),
+        }
+        for root, ans_tuple in answer.items():
+            for i, ans in enumerate(ans_tuple):
+                test_ans = conjug(root, "présent", "impératif", i)
+                self.assertEqual(ans, test_ans)
+            test_ans_tuple = conjug_all(root, "présent", "impératif")
+            self.assertTupleEqual(ans_tuple, test_ans_tuple)
+
 
 if __name__ == '__main__':
     unittest.main()

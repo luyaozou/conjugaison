@@ -6,7 +6,7 @@ _VOWELS = ('a', 'â', 'à', 'e', 'é', 'è', 'i', 'o', 'u')
 _DOUBLE_CONSONANTS = ('ch', 'gn',)
 
 # tense & moods currently available in the dictionray
-AVAILABLE_TENSE_MOODS = (0, 1, 2, 3)
+AVAILABLE_TENSE_MOODS = (0, 1, 2, 3, 8, 15)
 
 TENSE_MOODS = (
     ("présent", "indicatif"),
@@ -30,6 +30,8 @@ TENSE_MOODS = (
 # 自反代词
 PERSONS_PRONOMINAL = ("me", "te", "se", "se", "nous", "vous", "se", "se")
 PERSONS = ("je", "tu", "il", "elle", "nous", "vous", "ils", "elles")
+PERSONS_TONIQUE = ("moi", "toi", "", "", "nous", "vous", "", "")
+
 # index map of person to conjug tuple index
 # the "person" distinguishes masculin / feminin
 # the conjug tuple does not
@@ -93,12 +95,16 @@ _VERBS_IRREG = {
         ("'fus", "fus", "fut", "fûmes", "fûtes", "furent"),
     ("être", "futur", "indicatif"): "se",
     ("être", "imparfait", "indicatif"): "ét",
+    ("être", "présent", "impératif"):
+        ("", "sois", "", "soyons", "soyez", ""),
     ("être", "présent", "participe"): "étant",
     ("être", "passé", "participe"): "été",
     ("avoir", "présent", "indicatif"):
         ("ai", "as", "a", "avons", "avez", "ont"),
     ("avoir", "passé simple", "indicatif"):
         ("'eus", "eus", "eut", "eûmes", "eûtes", "eurent"),
+    ("avoir", "présent", "impératif"):
+        ("", "aie", "", "ayons", "ayez", ""),
     ("avoir", "futur", "indicatif"): "au",
     ("avoir", "présent", "participe"): "ayant",
     ("avoir", "passé", "participe"): "eu",
@@ -303,6 +309,7 @@ _VERBS_IRREG = {
     ("pourvoir", "passé", "participe"): "pourvu",
     ("pouvoir", "présent", "indicatif"):
         ("peux", "peux", "peut", "pouvons", "pouvez", "peuvent"),
+    ("pouvoir", "présent", "impératif"): ("", "", "", "", "", ""),
     ("pouvoir", "présent", "participe"): "pouvant",
     ("pouvoir", "passé", "participe"): "pu",
     ("prendre", "présent", "indicatif"):
@@ -349,6 +356,8 @@ _VERBS_IRREG = {
     ("savoir", "présent", "indicatif"):
         ("sais", "sais", "sait", "savons", "savez", "savent"),
     ("savoir", "futur", "indicatif"): "sau",
+    ("savoir", "présent", "impératif"):
+        ("", "sache", "", "sachons", "sachez", ""),
     ("savoir", "présent", "participe"): "sachant",
     ("savoir", "passé", "participe"): "su",
     ("sentir", "présent", "indicatif"):
@@ -367,6 +376,11 @@ _VERBS_IRREG = {
         ("souffre", "souffres", "souffre", "souffrons", "souffrez", "souffrent"),
     ("souffrir", "présent", "participe"): "souffrant",
     ("souffrir", "passé", "participe"): "souffert",
+    ("soutenir", "présent", "indicatif"):
+        ("soutiens", "soutiens", "soutient", "soutenons", "soutenez", "soutiennent"),
+    ("soutenir", "futur", "indicatif"): "soutiend",
+    ("soutenir", "présent", "participe"): "soutenant",
+    ("soutenir", "passé", "participe"): "soutenu",
     ("suffire", "présent", "indicatif"):
         ("suffis", "suffis", "suffit", "suffisons", "suffisez", "suffisent"),
     ("suffire", "présent", "participe"): "suffisant",
@@ -421,6 +435,8 @@ _VERBS_IRREG = {
     ("voir", "passé", "participe"): "vu",
     ("vouloir", "présent", "indicatif"):
         ("veux", "veux", "veut", "voulons", "voulez", "veulent"),
+    ("vouloir", "présent", "impératif"):
+        ("", "veuille", "", "veuillons", "veuillez", ""),
     ("vouloir", "futur", "indicatif"): "voud",
     ("vouloir", "présent", "participe"): "voulant",
     ("vouloir", "passé", "participe"): "voulu",
@@ -429,6 +445,7 @@ _VERBS_IRREG = {
 _VERBS_4GP = {
     ("falloir", "présent", "indicatif"):
         ("", "", "faut", "", "", ""),
+    ("falloir", "présent", "impératif"): ("", "", "", "", "", ""),
     ("falloir", "imparfait", "indicatif"): "fall",
     ("falloir", "futur", "indicatif"): "faud",
     ("falloir", "passé", "participe"): "fallu",
@@ -438,6 +455,7 @@ _VERBS_4GP = {
     ("frire", "passé", "participe"): "frit",
     ("pleuvoir", "présent", "indicatif"):
         ("", "", "pleut", "", "", ""),
+    ("pleuvoir", "présent", "impératif"): ("", "", "", "", "", ""),
     ("pleuvoir", "imparfait", "indicatif"): "pleuv",
     ("pleuvoir", "futur", "indicatif"): "pleuv",
     ("pleuvoir", "passé", "participe"): "plu",
@@ -459,61 +477,75 @@ def conjug_all(verb, tense, mood):
     is_pronominal = _check_pronominal(verb)
     infinitive = _remove_pronominal(verb)
     group = _find_group(infinitive)
-    try:
-        conjug_tuple = _RULES_AVEC_AUX[(tense, mood)](verb, group)
-    except KeyError:
-        if is_pronominal:
-            conjug_tuple = _RULES_SANS_AUX[(tense, mood)](infinitive, group)
-        else:
-            conjug_tuple = _RULES_SANS_AUX[(tense, mood)](verb, group)
     t_answer = []
-    if group == 4:  # special verbs, do not have all conjugaison
-        present_tuple = _RULES_SANS_AUX[('présent', 'indicatif')](verb, 4)
-        for i, (_p, _c) in enumerate(zip(present_tuple, conjug_tuple)):
-            if _c and _p and i < 3:
-                if i == 0 and _check_apostrophe(_c):
-                    t_answer.append("j'" + _c)
+    if mood == 'impératif':
+        # treat impératif alone because it always has only 3 conjugs
+        conjug_tuple = _RULES_SANS_AUX[('présent', 'impératif')](infinitive, group)
+        for pidx in range(8):
+            pers_idx = _PERSON_IDX_MAP[pidx]
+            base = conjug_tuple[pers_idx]
+            if pers_idx in (1, 3, 4):
+                if base and is_pronominal:
+                    t_answer.append('-'.join([base, PERSONS_TONIQUE[pidx]]))
                 else:
-                    t_answer.append(' '.join([PERSONS[i], _c]))
+                    t_answer.append(base)
             else:
                 t_answer.append("")
-        t_answer.append("")
-        t_answer.append("")
     else:
-        for pidx in range(8):
-            base = conjug_tuple[_PERSON_IDX_MAP[pidx]]
-            if not base:  # if this conjugation does not exist and therefore is empty
-                answer = ""
+        try:
+            conjug_tuple = _RULES_AVEC_AUX[(tense, mood)](verb, group)
+        except KeyError:
+            if is_pronominal:
+                conjug_tuple = _RULES_SANS_AUX[(tense, mood)](infinitive, group)
             else:
-                if is_pronominal:
-                    if pidx not in (4, 5) and _check_apostrophe(base):
-                        answer = PERSONS[pidx] + " " + \
-                                 PERSONS_PRONOMINAL[pidx][:-1] + "'" + base
+                conjug_tuple = _RULES_SANS_AUX[(tense, mood)](verb, group)
+        if group == 4:  # special verbs, do not have all conjugaison
+            present_tuple = _RULES_SANS_AUX[('présent', 'indicatif')](verb, 4)
+            for i, (_p, _c) in enumerate(zip(present_tuple, conjug_tuple)):
+                if _c and _p and i < 3:
+                    if i == 0 and _check_apostrophe(_c):
+                        t_answer.append("j'" + _c)
                     else:
-                        answer = ' '.join([PERSONS[pidx], PERSONS_PRONOMINAL[pidx],
-                                           base])
+                        t_answer.append(' '.join([PERSONS[i], _c]))
                 else:
-                    if pidx == 0 and _check_apostrophe(base):
-                        answer = "'".join(["j", base])
-                    else:
-                        answer = ' '.join([PERSONS[pidx], base])
-                if is_gender:
-                    if pidx in (0, 1):
-                        answer += '(e)'
-                    elif pidx == 3:
-                        answer += 'e'
-                    elif pidx in (4, 5):
-                        if answer[-1] == 's':  # already ends with "s"
-                            answer += '(es)'
+                    t_answer.append("")
+            t_answer.append("")
+            t_answer.append("")
+        else:
+            for pidx in range(8):
+                base = conjug_tuple[_PERSON_IDX_MAP[pidx]]
+                if not base:  # if this conjugation does not exist and therefore is empty
+                    answer = ""
+                else:
+                    if is_pronominal:
+                        if pidx not in (4, 5) and _check_apostrophe(base):
+                            answer = PERSONS[pidx] + " " + \
+                                     PERSONS_PRONOMINAL[pidx][:-1] + "'" + base
                         else:
-                            answer += '(e)s'
-                    elif pidx == 6 and answer[-1] != 's':
-                        answer += 's'
-                    elif pidx == 7:
-                        answer += 'es'
+                            answer = ' '.join([PERSONS[pidx], PERSONS_PRONOMINAL[pidx],
+                                               base])
                     else:
-                        pass
-            t_answer.append(answer)
+                        if pidx == 0 and _check_apostrophe(base):
+                            answer = "'".join(["j", base])
+                        else:
+                            answer = ' '.join([PERSONS[pidx], base])
+                    if is_gender:
+                        if pidx in (0, 1):
+                            answer += '(e)'
+                        elif pidx == 3:
+                            answer += 'e'
+                        elif pidx in (4, 5):
+                            if answer[-1] == 's':  # already ends with "s"
+                                answer += '(es)'
+                            else:
+                                answer += '(e)s'
+                        elif pidx == 6 and answer[-1] != 's':
+                            answer += 's'
+                        elif pidx == 7:
+                            answer += 'es'
+                        else:
+                            pass
+                t_answer.append(answer)
     return tuple(t_answer)
 
 
@@ -532,7 +564,11 @@ def conjug(verb, tense, mood, pers_idx):
     is_pronominal = _check_pronominal(verb)
     infinitive = _remove_pronominal(verb)
     group = _find_group(infinitive)
-    if group == 4:  # special verbs, do not have all conjugaison
+    if mood == 'impératif':
+        answer = _RULES_SANS_AUX[('présent', 'impératif')](infinitive, group, _PERSON_IDX_MAP[pers_idx])
+        if bool(answer) and is_pronominal:
+            answer += '-' + PERSONS_TONIQUE[pers_idx]
+    elif group == 4:  # special verbs, do not have all conjugaison
         if pers_idx < 3:
             if _RULES_SANS_AUX[('présent', 'indicatif')](verb, 4, pers_idx):
                 try:
@@ -737,7 +773,7 @@ def _rule_passe_compose(verb, group, pidx=-1):
             if pidx < 0, return all 6 conjugs
             if pidx > 0, return only 1 conjug of that person
     :returns
-        conjug: str or tuple of str
+        conjug: str or tuple of 6 str
     """
     infinitive = _remove_pronominal(verb)
     if infinitive in _AUX_ETRE_VERBS or _check_pronominal(verb):
@@ -759,7 +795,7 @@ def _rule_imparfait_indicatif(infinitive, group, pidx=-1):
             if pidx < 0, return all 6 conjugs
             if pidx > 0, return only 1 conjug of that person
     :returns
-        conjug: str or tuple of str
+        conjug: str or tuple of 6 str
     """
     root = _root_imparfait_indicatif(infinitive, group)
     if group == 1 and root[-2:] == 'ge':  # remove extra "e" in "gions" "giez case
@@ -806,7 +842,7 @@ def _rule_futur_indicatif(infinitive, group, pidx=-1):
             if pidx < 0, return all 6 conjugs
             if pidx > 0, return only 1 conjug of that person
     :returns
-        conjug: str or tuple of str
+        conjug: str or tuple of 6 str
     """
     root = _root_futur_indicatif(infinitive, group)
     if pidx < 0:
@@ -849,6 +885,75 @@ def _root_futur_indicatif(infinitive, group):
     return root
 
 
+def _rule_present_conditionnel(infinitive, group, pidx=-1):
+    """ Conjugation rule for présent, conditionnel
+    The rule: take the root of futur, indicatif,
+              and concat with the suffix of imparfait, indicatif
+    :argument
+        infinitive: str         verb infinitive
+        pidx: int               -1~5 personal index
+            if pidx < 0, return all 6 conjugs
+            if pidx > 0, return only 1 conjug of that person
+    :returns
+        conjug: str or tuple of 6 str
+    """
+
+    # note that in my root of futur, I dont put the ending 'r'
+    # so we need to add it back here
+    root = _root_futur_indicatif(infinitive, group) + 'r'
+    if pidx < 0:
+        return tuple(root + _s for _s in _SUFFIX[("imparfait", "indicatif")])
+    else:
+        return root + _SUFFIX[("imparfait", "indicatif")][pidx]
+
+
+def _rule_present_imperatif(infinitive, group, pidx=-1):
+    """ Conjugation rule for présent, conditionnel
+    The rules:
+        1. take tu, nous, vous, remove the person
+        2. if 1st group, remove ending 's' in tu
+        3. if pronominal verb, add -toi, -nous, -vous after the verb
+        4. special case: être, avoir, savoir, vouloir
+    :argument
+        infinitive: str         verb infinitive
+        pidx: int               -1~5 personal index
+            if pidx < 0, return all 6 conjugs
+            if pidx > 0, return only 1 conjug of that person
+    :returns
+        conjug: str or tuple of 6 str
+    """
+    if pidx < 0:
+        if group == 3:
+            try:
+                conjug_tuple = _VERBS_IRREG[(infinitive, "présent", "impératif")]
+            except KeyError:
+                conjug_tuple = _rule_present_indicatif(infinitive, group, pidx)
+        elif group == 4:
+            try:
+                conjug_tuple = _VERBS_4GP[(infinitive, "présent", "impératif")]
+            except KeyError:
+                conjug_tuple = _rule_present_indicatif(infinitive, group, pidx)
+        else:
+            conjug_tuple = _rule_present_indicatif(infinitive, group, pidx)
+        if conjug_tuple[1].endswith('es') or conjug_tuple[1].endswith('as'):
+            return "", conjug_tuple[1][:-1], "", conjug_tuple[3], conjug_tuple[4], ""
+        else:
+            return "", conjug_tuple[1], "", conjug_tuple[3], conjug_tuple[4], ""
+    else:
+        if (infinitive, "présent", "impératif") in _VERBS_IRREG:
+            answer = _VERBS_IRREG[(infinitive, "présent", "impératif")][pidx]
+        elif (infinitive, "présent", "impératif") in _VERBS_4GP:
+            answer = _VERBS_4GP[(infinitive, "présent", "impératif")][pidx]
+        else:
+            if pidx in (1, 3, 4):
+                answer = _rule_present_indicatif(infinitive, group, pidx)
+                if pidx == 1 and (answer.endswith('es') or answer.endswith('as')):
+                    answer = answer[:-1]
+            else:
+                answer = ""
+        return answer
+
+
 def _participe(infinitive, group, tense):
     try:
         if group == 4:
@@ -881,6 +986,8 @@ _RULES_SANS_AUX = {
     ('présent', 'indicatif'): _rule_present_indicatif,
     ('imparfait', 'indicatif'): _rule_imparfait_indicatif,
     ('futur', 'indicatif'): _rule_futur_indicatif,
+    ('présent', 'conditionnel'): _rule_present_conditionnel,
+    ('présent', 'impératif'): _rule_present_imperatif,
 }
 
 # map verb conjugaison rules, rules with aux verb
