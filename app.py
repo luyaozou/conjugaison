@@ -27,6 +27,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.config = Config()
         if isfile('config.json'):
             from_json_(self.config, 'config.json')
+        self.config.nft = 0
+        self.config.nfc = 0
+        self.config.nbt = 0
+        self.config.nbc = 0
 
         self.db = AppDB('app.db')
 
@@ -48,6 +52,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.box2.btnCheck.clicked.connect(self.box3.btnClear.click)
         self.box1.btnGen.clicked.connect(self.box3.btnClear.click)
         self.box2.btnGen.clicked.connect(self.box3.btnClear.click)
+        self.box1.btnHelp.clicked.connect(self._slot_help_box1)
+        self.box2.btnHelp.clicked.connect(self._slot_help_box2)
 
         self.dConfig = DialogConfig(parent=self)
         self.dAddVoc = DialogAddVoc(self.db, parent=self)
@@ -94,7 +100,23 @@ class MainWindow(QtWidgets.QMainWindow):
             # resume previous ones
             self.dConfig.set_tense_mood(self.config.enabled_tm_idx)
 
+    @QtCore.pyqtSlot()
+    def _slot_help_box1(self):
+        verb, tense_mood = self.box1.ask_help()
+        self.box3.editVerb.setText(verb)
+        self.box3.comboTenseMood.setCurrentText(tense_mood)
+        self.box1.btnCheck.setDisabled(True)
+
+    @QtCore.pyqtSlot()
+    def _slot_help_box2(self):
+        verb, tense_mood = self.box2.ask_help()
+        self.box3.editVerb.setText(verb)
+        self.box3.comboTenseMood.setCurrentText(tense_mood)
+        self.box2.btnCheck.setDisabled(True)
+
     def closeEvent(self, ev):
+        self.db.update_stat(self.config.nft, self.config.nfc,
+                            self.config.nbt, self.config.nbc)
         # close database
         self.db.close()
         # save setting to local file
@@ -124,9 +146,8 @@ class Box1(QtWidgets.QGroupBox):
         self.lblPerson = QtWidgets.QLabel()
         self.editInput = QtWidgets.QLineEdit()
         self.btnGen = QtWidgets.QPushButton('Next')
-        self.btnGen.setFixedWidth(100)
-        self.btnCheck = QtWidgets.QPushButton('Check Answer (Shift+Enter)')
-        self.btnCheck.setFixedWidth(225)
+        self.btnCheck = QtWidgets.QPushButton('Check Answer')
+        self.btnCheck.setToolTip('Shift + Enter')
         self.btnCheck.setShortcut(QKeySequence(QtCore.Qt.SHIFT | QtCore.Qt.Key_Return))
         self.lblCk = QtWidgets.QLabel()
         self.lblCk.setFixedWidth(30)
@@ -134,9 +155,13 @@ class Box1(QtWidgets.QGroupBox):
         self.lblExp.setWordWrap(True)
         self.lblExp.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
                                   QtWidgets.QSizePolicy.Minimum)
+        self.btnHelp = QtWidgets.QPushButton('Help')
+        self.btnHelp.setToolTip('Ctrl + Shift + Enter')
+        self.btnHelp.setShortcut(QKeySequence(QtCore.Qt.CTRL | QtCore.Qt.SHIFT | QtCore.Qt.Key_Return))
 
         self._answer = '*'  # to avoid matching empty input and give false correct
         self._entry_id = -1
+        self._tm_idx = -1
 
         row1 = QtWidgets.QHBoxLayout()
         row1.setAlignment(QtCore.Qt.AlignLeft)
@@ -154,6 +179,7 @@ class Box1(QtWidgets.QGroupBox):
         row3.setAlignment(QtCore.Qt.AlignRight)
         row3.addWidget(self.btnGen)
         row3.addWidget(self.btnCheck)
+        row3.addWidget(self.btnHelp)
 
         thisLayout = QtWidgets.QVBoxLayout()
         thisLayout.setSpacing(10)
@@ -176,9 +202,15 @@ class Box1(QtWidgets.QGroupBox):
         # this is to avoid those few special verbs that do not have full conjug.
         try:
             while True:
-                # randomly select a verb
-                entry_id, verb, explanation, tm_idx, pers_idx = self.db.choose_verb(
-                        'practice_forward', self.config.enabled_tm_idx)
+                # every <retry_intvl> practices, retrieve the verb with
+                # maximum incorrect number and try again
+                if not(self.config.nft % self.config.retry_intvl):
+                    entry_id, verb, explanation, tm_idx, pers_idx = self.db.choose_verb(
+                            'practice_forward', self.config.enabled_tm_idx,
+                            order='correct_num ASC')
+                else:   # randomly select a verb
+                    entry_id, verb, explanation, tm_idx, pers_idx = self.db.choose_verb(
+                            'practice_forward', self.config.enabled_tm_idx)
                 tense, mood = TENSE_MOODS[tm_idx]
                 answer = conjug(verb, tense, mood, pers_idx)
                 if answer:
@@ -194,6 +226,9 @@ class Box1(QtWidgets.QGroupBox):
                     self.editInput.setFocus()
                     self._answer = answer
                     self._entry_id = entry_id
+                    self._tm_idx = tm_idx
+                    self.config.nft += 1    # add 1 to n total forward
+                    self.btnCheck.setDisabled(False)
                     break
         except ValueError as err:
             d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Critical,
@@ -216,6 +251,7 @@ class Box1(QtWidgets.QGroupBox):
         if txt_striped == self._answer:
             self.lblCk.setText('✓')
             self.lblCk.setStyleSheet('font-size: 14pt; font: bold; color: #009933')
+            self.config.nfc += 1
             self._timer.start()
         else:
             self.lblCk.setText('🞪')
@@ -227,6 +263,9 @@ class Box1(QtWidgets.QGroupBox):
             d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
                                       'Warning', 'No entry found')
             d.exec_()
+
+    def ask_help(self):
+        return self.lblVerb.text(), ', '.join(TENSE_MOODS[self._tm_idx])
 
 
 class Box2(QtWidgets.QGroupBox):
@@ -244,10 +283,12 @@ class Box2(QtWidgets.QGroupBox):
         self._timer.timeout.connect(self._gen)
 
         self.btnGen = QtWidgets.QPushButton('Next')
-        self.btnGen.setFixedWidth(100)
-        self.btnCheck = QtWidgets.QPushButton('Check Answer (Alt+Enter)')
-        self.btnCheck.setFixedWidth(225)
+        self.btnCheck = QtWidgets.QPushButton('Check Answer')
+        self.btnCheck.setToolTip('Alt + Enter')
         self.btnCheck.setShortcut(QKeySequence(QtCore.Qt.ALT | QtCore.Qt.Key_Return))
+        self.btnHelp = QtWidgets.QPushButton('Help')
+        self.btnHelp.setToolTip('Shift + Alt + Enter')
+        self.btnHelp.setShortcut(QKeySequence(QtCore.Qt.SHIFT | QtCore.Qt.ALT | QtCore.Qt.Key_Return))
 
         self.editVerb = QtWidgets.QLineEdit()
         self.comboTenseMood = QtWidgets.QComboBox()
@@ -271,6 +312,7 @@ class Box2(QtWidgets.QGroupBox):
         row3.setAlignment(QtCore.Qt.AlignRight)
         row3.addWidget(self.btnGen)
         row3.addWidget(self.btnCheck)
+        row3.addWidget(self.btnHelp)
 
         thisLayout = QtWidgets.QVBoxLayout()
         thisLayout.setAlignment(QtCore.Qt.AlignHCenter)
@@ -301,9 +343,15 @@ class Box2(QtWidgets.QGroupBox):
         # this is to avoid those few special verbs that do not have full conjug.
         try:
             while True:
-                # randomly select a verb
-                entry_id, verb, _, tm_idx, pers_idx = self.db.choose_verb(
-                        'practice_backward', self.config.enabled_tm_idx)
+                # every <retry_intvl> practices, retrieve the verb with
+                # maximum incorrect number and try again
+                if not (self.config.nbt % self.config.retry_intvl):
+                    entry_id, verb, explanation, tm_idx, pers_idx = self.db.choose_verb(
+                            'practice_backward', self.config.enabled_tm_idx,
+                            order='correct_num ASC')
+                else:  # randomly select a verb
+                    entry_id, verb, explanation, tm_idx, pers_idx = self.db.choose_verb(
+                            'practice_backward', self.config.enabled_tm_idx)
                 tense, mood = TENSE_MOODS[tm_idx]
                 conjug_str = conjug(verb, tense, mood, pers_idx)
                 if conjug_str:
@@ -312,6 +360,8 @@ class Box2(QtWidgets.QGroupBox):
                     self._answer = verb
                     self._entry_id = entry_id
                     self._tm_idx = tm_idx
+                    self.config.nbt += 1  # add 1 to n total forward
+                    self.btnCheck.setDisabled(False)
                     break
         except ValueError as err:
             d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Critical,
@@ -333,6 +383,7 @@ class Box2(QtWidgets.QGroupBox):
         if is_correct:
             self.lblCk.setText('✓')
             self.lblCk.setStyleSheet('font-size: 14pt; color: #009933')
+            self.config.nbc += 1
             self._timer.start()
         else:
             self.lblCk.setText('🞪')
@@ -344,6 +395,9 @@ class Box2(QtWidgets.QGroupBox):
             d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
                                       'Warning', 'No entry to practice today')
             d.exec_()
+
+    def ask_help(self):
+        return self._answer, ', '.join(TENSE_MOODS[self._tm_idx])
 
 
 class Box3(QtWidgets.QGroupBox):

@@ -30,7 +30,7 @@ class AppDB:
         n2 = self._c.fetchone()[0]
         return n1, n2
 
-    def choose_verb(self, tbl, enabled_tm_idx):
+    def choose_verb(self, tbl, enabled_tm_idx, order='RANDOM()'):
         enabled_idx_str = ','.join([str(i) for i in enabled_tm_idx])
         sql = """ SELECT {0:s}.id, {0:s}.verb, explanation, tense_mood_idx, person_idx 
         FROM {0:s}
@@ -39,8 +39,8 @@ class AppDB:
             tense_mood_idx IN ({1:s})
             AND has_conjug = 1 
             AND DATE(expiration_date, 'localtime') < '{2:s}' 
-        ORDER BY RANDOM() LIMIT 1
-        """.format(tbl, enabled_idx_str, date.today().strftime('%Y-%m-%d'))
+        ORDER BY {3:s} LIMIT 1
+        """.format(tbl, enabled_idx_str, date.today().strftime('%Y-%m-%d'), order)
         self._c.execute(sql)
         return self._c.fetchone()
 
@@ -156,6 +156,38 @@ class AppDB:
                     pass
         self._conn.commit()
 
+    def update_stat(self, nft, nfc, nbt, nbc):
+        """
+        :arguments
+            :param nft: int     forward total
+            :param nfc: int     forward correct
+            :param nbt: int     backward total
+            :param nbc: int     backward corret
+        """
+        # find if there is already a record of today
+        sql = """ SELECT rowid, n_total_forward, n_correct_forward,
+            n_total_backward, n_correct_backward
+            FROM statistics WHERE DATE(log_date, 'localtime') = (?) """
+        self._c.execute(sql, (date.today().strftime('%Y-%m-%d'), ))
+        res = self._c.fetchone()
+        if res:     # if there is already data, add to that
+            old_nft, old_nfc, old_nbt, old_nbc = res[1:]
+            sql = """ UPDATE statistics 
+            SET 
+                (n_total_forward, n_correct_forward,
+                n_total_backward, n_correct_backward) = (?, ?, ?, ?) 
+            WHERE rowid = (?) 
+            """
+            self._c.execute(sql, (old_nft + nft, old_nfc + nfc,
+                                  old_nbt + nbt, old_nbc + nbc, res[0]))
+        else:   # create a record for today
+            sql = """ INSERT INTO statistics 
+            (n_total_forward, n_correct_forward,
+             n_total_backward, n_correct_backward) 
+            VALUES (?, ?, ?, ?)"""
+            self._c.execute(sql, (nft, nfc, nbt, nbc))
+        self._conn.commit()
+
     def close(self):
         self._conn.close()
 
@@ -167,7 +199,9 @@ def create_tbls(conn, c):
     sql = """ CREATE TABLE IF NOT EXISTS glossary (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         verb TEXT UNIQUE, 
-        explanation TEXT);"""
+        explanation TEXT,
+        date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+        );"""
     c.execute(sql)
 
     # forward practice table
@@ -194,6 +228,16 @@ def create_tbls(conn, c):
             expiration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             has_conjug INTEGER DEFAULT 0
         );"""
+    c.execute(sql)
+
+    # statistics table
+    sql = """ CREATE TABLE IF NOT EXISTS statistics (
+        log_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        n_total_forward INTEGER,
+        n_correct_forward INTEGER,
+        n_total_backward INTEGER,
+        n_correct_backward INTEGER
+    );"""
     c.execute(sql)
 
     conn.commit()

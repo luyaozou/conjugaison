@@ -33,6 +33,12 @@ class Config:
     def __init__(self):
 
         self.enabled_tm_idx = [0, ]
+        self.lang = 'Eng'
+        self.nft = 0
+        self.nfc = 0
+        self.nbt = 0
+        self.nbc = 0
+        self.retry_intvl = 10
 
 
 def _obj2dict(obj):
