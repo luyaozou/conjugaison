@@ -33,7 +33,7 @@ class Config:
     def __init__(self):
 
         self.enabled_tm_idx = [0, ]
-        self.lang = 'Eng'
+        self.lang = 'English'
         self.nft = 0
         self.nfc = 0
         self.nbt = 0

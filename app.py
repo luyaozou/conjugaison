@@ -4,12 +4,14 @@
 
 import sys
 from os.path import isfile
+from time import sleep
 from sqlite3 import Error as dbError
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtGui import QTextOption, QKeySequence
 from dictionary import TENSE_MOODS, PERSONS
 from dictionary import conjug, conjug_all
 from config import Config, from_json_, to_json
+from lang import LANG_PKG
 from db import AppDB
 
 
@@ -18,7 +20,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle('Practice French Conjugaison')
         self.setStyleSheet('font-size: 12pt')
         self.setMinimumWidth(600)
         self.setMinimumHeight(650)
@@ -31,6 +32,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.config.nfc = 0
         self.config.nbt = 0
         self.config.nbc = 0
+        self.setWindowTitle(LANG_PKG[self.config.lang]['main_windowtitle'])
 
         self.db = AppDB('app.db')
 
@@ -55,15 +57,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.box1.btnHelp.clicked.connect(self._slot_help_box1)
         self.box2.btnHelp.clicked.connect(self._slot_help_box2)
 
-        self.dConfig = DialogConfig(parent=self)
-        self.dAddVoc = DialogAddVoc(self.db, parent=self)
-        self.dBrowse = DialogBrowse(self.db, parent=self)
+        self.dConfig = DialogConfig(self.config, parent=self)
+        self.dPref = DialogPref(self.config, parent=self)
+        self.dAddVoc = DialogAddVoc(self.db, self.config, parent=self)
+        self.dBrowse = DialogBrowse(self.db, self.config, parent=self)
         # apply config to dialogs
         self.dConfig.set_tense_mood(self.config.enabled_tm_idx)
+        self.dPref.accepted.connect(self.apply_lang)
 
         menubar = MenuBar(parent=self)
         self.setMenuBar(menubar)
-        self.statusBar = StatusBar(parent=self)
+        self.statusBar = StatusBar(self.config, parent=self)
         self.setStatusBar(self.statusBar)
         self.statusBar.refresh(*self.db.num_expired_entries(self.config.enabled_tm_idx))
         self.box1.sig_checked.connect(lambda: self.statusBar.refresh(
@@ -71,10 +75,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.box2.sig_checked.connect(lambda: self.statusBar.refresh(
                 *self.db.num_expired_entries(self.config.enabled_tm_idx)))
         menubar.actionConfig.triggered.connect(self._config)
+        menubar.actionPref.triggered.connect(self.dPref.exec)
         menubar.actionAddVoc.triggered.connect(self.dAddVoc.exec)
         menubar.actionBrowse.triggered.connect(self.dBrowse.exec)
-
-        self.statusBar.showMessage('Verify database', 1000)
+        self.statusBar.showMessage(LANG_PKG[self.config.lang]['status_bar_msg'],
+                                   1000)
         self.setDisabled(True)
         self.db.check_has_conjug()
         self.setDisabled(False)
@@ -91,14 +96,31 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.box3.set_tm(self.config.enabled_tm_idx)
                 self.statusBar.refresh(*self.db.num_expired_entries(tm_idx))
             else:
-                d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
-                'Empty', 'At least one tense mood should be selected. Resume previous configuration')
+                d = QtWidgets.QMessageBox(
+                        QtWidgets.QMessageBox.Warning,
+                        LANG_PKG[self.config.lang]['config_tm_warning_title'],
+                        LANG_PKG[self.config.lang]['config_tm_warning_body'])
                 d.exec_()
                 # resume previous ones
                 self.dConfig.set_tense_mood(self.config.enabled_tm_idx)
         else:
             # resume previous ones
             self.dConfig.set_tense_mood(self.config.enabled_tm_idx)
+
+    @QtCore.pyqtSlot()
+    def apply_lang(self):
+        # apply language package
+        sleep(0.02)
+        self.setWindowTitle(LANG_PKG[self.config.lang]['main_windowtitle'])
+        self.box1.apply_lang()
+        self.box2.apply_lang()
+        self.box3.apply_lang()
+        self.dPref.apply_lang()
+        self.dConfig.apply_lang()
+        self.dAddVoc.apply_lang()
+        self.dBrowse.apply_lang()
+        self.menuBar().apply_lang(LANG_PKG[self.config.lang])
+        self.statusBar.refresh(*self.db.num_expired_entries(self.config.enabled_tm_idx))
 
     @QtCore.pyqtSlot()
     def _slot_help_box1(self):
@@ -120,18 +142,18 @@ class MainWindow(QtWidgets.QMainWindow):
         # close database
         self.db.close()
         # save setting to local file
+        self.dPref.fetch_config()
         to_json(self.config, 'config.json')
 
 
 class Box1(QtWidgets.QGroupBox):
-
     sig_checked = QtCore.pyqtSignal()
 
     def __init__(self, db, config, parent=None):
         super().__init__(parent)
         self.db = db
         self.config = config
-        self.setTitle('Forward Practice: Conjugate Verb')
+        self.setTitle(LANG_PKG[config.lang]['box1_title'])
         self._timer = QtCore.QTimer()
         self._timer.setSingleShot(True)
         self._timer.setInterval(1000)
@@ -145,8 +167,8 @@ class Box1(QtWidgets.QGroupBox):
         self.lblMood.setFixedWidth(80)
         self.lblPerson = QtWidgets.QLabel()
         self.editInput = QtWidgets.QLineEdit()
-        self.btnGen = QtWidgets.QPushButton('Next')
-        self.btnCheck = QtWidgets.QPushButton('Check Answer')
+        self.btnGen = QtWidgets.QPushButton(LANG_PKG[config.lang]['box1_btnGen'])
+        self.btnCheck = QtWidgets.QPushButton(LANG_PKG[config.lang]['box1_btnCheck'])
         self.btnCheck.setToolTip('Shift + Enter')
         self.btnCheck.setShortcut(QKeySequence(QtCore.Qt.SHIFT | QtCore.Qt.Key_Return))
         self.lblCk = QtWidgets.QLabel()
@@ -155,7 +177,7 @@ class Box1(QtWidgets.QGroupBox):
         self.lblExp.setWordWrap(True)
         self.lblExp.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
                                   QtWidgets.QSizePolicy.Minimum)
-        self.btnHelp = QtWidgets.QPushButton('Help')
+        self.btnHelp = QtWidgets.QPushButton(LANG_PKG[config.lang]['box1_btnHelp'])
         self.btnHelp.setToolTip('Ctrl + Shift + Enter')
         self.btnHelp.setShortcut(QKeySequence(QtCore.Qt.CTRL | QtCore.Qt.SHIFT | QtCore.Qt.Key_Return))
 
@@ -204,11 +226,11 @@ class Box1(QtWidgets.QGroupBox):
             while True:
                 # every <retry_intvl> practices, retrieve the verb with
                 # maximum incorrect number and try again
-                if not(self.config.nft % self.config.retry_intvl):
+                if not (self.config.nft % self.config.retry_intvl):
                     entry_id, verb, explanation, tm_idx, pers_idx = self.db.choose_verb(
                             'practice_forward', self.config.enabled_tm_idx,
                             order='correct_num ASC')
-                else:   # randomly select a verb
+                else:  # randomly select a verb
                     entry_id, verb, explanation, tm_idx, pers_idx = self.db.choose_verb(
                             'practice_forward', self.config.enabled_tm_idx)
                 tense, mood = TENSE_MOODS[tm_idx]
@@ -227,20 +249,26 @@ class Box1(QtWidgets.QGroupBox):
                     self._answer = answer
                     self._entry_id = entry_id
                     self._tm_idx = tm_idx
-                    self.config.nft += 1    # add 1 to n total forward
+                    self.config.nft += 1  # add 1 to n total forward
                     self.btnCheck.setDisabled(False)
                     break
         except ValueError as err:
-            d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Critical,
-                                      'Error', str(err))
+            d = QtWidgets.QMessageBox(
+                    QtWidgets.QMessageBox.Critical,
+                    LANG_PKG[self.config.lang]['msg_error_title'], str(err))
             d.exec_()
         except TypeError:
-            d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
-                                      'Warning', 'No entry found')
+            d = QtWidgets.QMessageBox(
+                    QtWidgets.QMessageBox.Warning,
+                    LANG_PKG[self.config.lang]['msg_warning_title'],
+                    LANG_PKG[self.config.lang]['msg_warning_no_entry'])
             d.exec_()
         except KeyError as err:
-            d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, 'Warning',
-                                      'Conjugation not implemented. {:s}'.format(str(err)))
+            d = QtWidgets.QMessageBox(
+                    QtWidgets.QMessageBox.Warning,
+                    LANG_PKG[self.config.lang]['msg_warning_title'],
+                    LANG_PKG[self.config.lang]['msg_warning_no_config'].format(str(err))
+            )
             d.exec_()
 
     def _ck(self):
@@ -260,33 +288,41 @@ class Box1(QtWidgets.QGroupBox):
             self.db.update_res('practice_forward', self._entry_id, txt_striped == self._answer)
             self.sig_checked.emit()
         except TypeError:
-            d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
-                                      'Warning', 'No entry found')
+            d = QtWidgets.QMessageBox(
+                    QtWidgets.QMessageBox.Warning,
+                    LANG_PKG[self.config.lang]['msg_warning_title'],
+                    LANG_PKG[self.config.lang]['msg_warning_no_entry']
+            )
             d.exec_()
 
     def ask_help(self):
         return self.lblVerb.text(), ', '.join(TENSE_MOODS[self._tm_idx])
 
+    def apply_lang(self):
+        self.setTitle(LANG_PKG[self.config.lang]['box1_title'])
+        self.btnGen.setText(LANG_PKG[self.config.lang]['box1_btnGen'])
+        self.btnCheck.setText(LANG_PKG[self.config.lang]['box1_btnCheck'])
+        self.btnHelp.setText(LANG_PKG[self.config.lang]['box1_btnHelp'])
+
 
 class Box2(QtWidgets.QGroupBox):
-
     sig_checked = QtCore.pyqtSignal()
 
     def __init__(self, db, config, parent=None):
         super().__init__(parent)
         self.db = db
         self.config = config
-        self.setTitle('Reverse Practice: Guess infinitive, tense and mood')
+        self.setTitle(LANG_PKG[config.lang]['box2_title'])
         self._timer = QtCore.QTimer()
         self._timer.setSingleShot(True)
         self._timer.setInterval(1000)
         self._timer.timeout.connect(self._gen)
 
-        self.btnGen = QtWidgets.QPushButton('Next')
-        self.btnCheck = QtWidgets.QPushButton('Check Answer')
+        self.btnGen = QtWidgets.QPushButton(LANG_PKG[config.lang]['box2_btnGen'])
+        self.btnCheck = QtWidgets.QPushButton(LANG_PKG[config.lang]['box2_btnCheck'])
         self.btnCheck.setToolTip('Alt + Enter')
         self.btnCheck.setShortcut(QKeySequence(QtCore.Qt.ALT | QtCore.Qt.Key_Return))
-        self.btnHelp = QtWidgets.QPushButton('Help')
+        self.btnHelp = QtWidgets.QPushButton(LANG_PKG[config.lang]['box2_btnHelp'])
         self.btnHelp.setToolTip('Shift + Alt + Enter')
         self.btnHelp.setShortcut(QKeySequence(QtCore.Qt.SHIFT | QtCore.Qt.ALT | QtCore.Qt.Key_Return))
 
@@ -303,7 +339,8 @@ class Box2(QtWidgets.QGroupBox):
         self.btnCheck.clicked.connect(self._ck)
 
         row2 = QtWidgets.QHBoxLayout()
-        row2.addWidget(QtWidgets.QLabel('Infinitive: '))
+        self.lblInf = QtWidgets.QLabel(LANG_PKG[config.lang]['box2_lblInf'])
+        row2.addWidget(self.lblInf)
         row2.addWidget(self.editVerb)
         row2.addWidget(self.comboTenseMood)
         row2.addWidget(self.lblCk)
@@ -364,16 +401,22 @@ class Box2(QtWidgets.QGroupBox):
                     self.btnCheck.setDisabled(False)
                     break
         except ValueError as err:
-            d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Critical,
-                                      'Error', str(err))
+            d = QtWidgets.QMessageBox(
+                    QtWidgets.QMessageBox.Critical,
+                    LANG_PKG[self.config.lang]['msg_error_title'], str(err))
             d.exec_()
         except TypeError:
-            d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
-                                      'Warning', 'No entry to practice today')
+            d = QtWidgets.QMessageBox(
+                    QtWidgets.QMessageBox.Warning,
+                    LANG_PKG[self.config.lang]['msg_warning_title'],
+                    LANG_PKG[self.config.lang]['msg_warning_no_entry'])
             d.exec_()
         except KeyError as err:
-            d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, 'Warning',
-                                      'Conjugation not implemented. {:s}'.format(str(err)))
+            d = QtWidgets.QMessageBox(
+                    QtWidgets.QMessageBox.Warning,
+                    LANG_PKG[self.config.lang]['msg_warning_title'],
+                    LANG_PKG[self.config.lang]['msg_warning_no_config'].format(str(err))
+            )
             d.exec_()
 
     def _ck(self):
@@ -392,12 +435,22 @@ class Box2(QtWidgets.QGroupBox):
             self.db.update_res('practice_backward', self._entry_id, is_correct)
             self.sig_checked.emit()
         except TypeError:
-            d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
-                                      'Warning', 'No entry to practice today')
+            d = QtWidgets.QMessageBox(
+                    QtWidgets.QMessageBox.Warning,
+                    LANG_PKG[self.config.lang]['msg_warning_title'],
+                    LANG_PKG[self.config.lang]['msg_warning_no_entry']
+            )
             d.exec_()
 
     def ask_help(self):
         return self._answer, ', '.join(TENSE_MOODS[self._tm_idx])
+
+    def apply_lang(self):
+        self.setTitle(LANG_PKG[self.config.lang]['box2_title'])
+        self.btnGen.setText(LANG_PKG[self.config.lang]['box2_btnGen'])
+        self.btnCheck.setText(LANG_PKG[self.config.lang]['box2_btnCheck'])
+        self.btnHelp.setText(LANG_PKG[self.config.lang]['box2_btnHelp'])
+        self.lblInf.setText(LANG_PKG[self.config.lang]['box2_lblInf'])
 
 
 class Box3(QtWidgets.QGroupBox):
@@ -406,13 +459,13 @@ class Box3(QtWidgets.QGroupBox):
         super().__init__(parent)
         self.config = config
         self.db = db
-        self.setTitle('Look up')
+        self.setTitle(LANG_PKG[config.lang]['box3_title'])
 
         self.editVerb = QtWidgets.QLineEdit()
         self.comboTenseMood = QtWidgets.QComboBox()
         self.comboTenseMood.setFixedWidth(300)
         self.comboTenseMood.addItems([', '.join(TENSE_MOODS[i]) for i in config.enabled_tm_idx])
-        self.btnClear = QtWidgets.QPushButton('Clear')
+        self.btnClear = QtWidgets.QPushButton(LANG_PKG[config.lang]['box3_btnClear'])
         self.lblExp = QtWidgets.QLabel()
         self.lblExp.setWordWrap(True)
         self.lblExp.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
@@ -454,7 +507,7 @@ class Box3(QtWidgets.QGroupBox):
             self.lblResult.setText(str(err))
             self.lblExp.clear()
         except dbError:
-            self.lblResult.setText("Cannot find verb in glossary")
+            self.lblResult.setText(LANG_PKG[self.config.lang]['box3_db_error'])
             self.lblExp.clear()
 
     def _clear(self):
@@ -462,12 +515,16 @@ class Box3(QtWidgets.QGroupBox):
         self.lblExp.clear()
         self.lblResult.clear()
 
+    def apply_lang(self):
+        self.setWindowTitle(LANG_PKG[self.config.lang]['box3_title'])
+        self.btnClear.setText(LANG_PKG[self.config.lang]['box3_btnClear'])
+
 
 class DialogConfig(QtWidgets.QDialog):
 
-    def __init__(self, parent=None):
+    def __init__(self, config, parent=None):
         super().__init__(parent)
-        self.setWindowTitle('Configure tense and mood for practice')
+        self.config = config
         ckLayout = QtWidgets.QVBoxLayout()
         self._cklist = []
         for i, _tm in enumerate(TENSE_MOODS):
@@ -480,6 +537,7 @@ class DialogConfig(QtWidgets.QDialog):
         self.btnCancel = QtWidgets.QPushButton("Cancel")
         btnLayout.addWidget(self.btnCancel)
         btnLayout.addWidget(self.btnOk)
+        self.apply_lang()
 
         thisLayout = QtWidgets.QVBoxLayout()
         thisLayout.addLayout(ckLayout)
@@ -501,12 +559,71 @@ class DialogConfig(QtWidgets.QDialog):
             if ck.isEnabled():
                 ck.setChecked(i in tm_idx)
 
+    def apply_lang(self):
+        self.setWindowTitle(LANG_PKG[self.config.lang]['dialog_config_title'])
+        self.btnOk.setText(LANG_PKG[self.config.lang]['btnOK'])
+        self.btnCancel.setText(LANG_PKG[self.config.lang]['btnCancel'])
+
+
+class DialogPref(QtWidgets.QDialog):
+
+    def __init__(self, config, parent=None):
+        super().__init__(parent)
+        self.config = config
+        self.setWindowTitle('Configure Preferences')
+
+        self.lblIntvl = QtWidgets.QLabel('Retry interval')
+        self.lblIntvl.setToolTip('Every this number of trials, the verb that fails most will be brought back again')
+        self.inpIntvl = QtWidgets.QSpinBox()
+        self.inpIntvl.setMinimum(1)
+        self.inpIntvl.setValue(config.retry_intvl)
+        self.lblLang = QtWidgets.QLabel('Language')
+        self.comboLang = QtWidgets.QComboBox()
+        self.comboLang.addItems(list(LANG_PKG.keys()))
+        self.comboLang.setCurrentText(config.lang)
+        prefLayout = QtWidgets.QFormLayout()
+        prefLayout.addRow(self.lblIntvl, self.inpIntvl)
+        prefLayout.addRow(self.lblLang, self.comboLang)
+
+        btnLayout = QtWidgets.QHBoxLayout()
+        btnLayout.setAlignment(QtCore.Qt.AlignRight)
+        self.btnOk = QtWidgets.QPushButton('Okay')
+        self.btnCancel = QtWidgets.QPushButton("Cancel")
+        btnLayout.addWidget(self.btnCancel)
+        btnLayout.addWidget(self.btnOk)
+
+        thisLayout = QtWidgets.QVBoxLayout()
+        thisLayout.addLayout(prefLayout)
+        thisLayout.addLayout(btnLayout)
+        self.setLayout(thisLayout)
+
+        self.btnCancel.clicked.connect(self.reject)
+        self.btnOk.clicked.connect(self.accept)
+        self.accepted.connect(self.fetch_config)
+
+    def fetch_config(self):
+        self.config.lang = list(LANG_PKG.keys())[self.comboLang.currentIndex()]
+        self.config.retry_intvl = self.inpIntvl.value()
+
+    def apply_lang(self):
+        self.setWindowTitle(LANG_PKG[self.config.lang]['dialog_pref_title'])
+        self.lblIntvl.setText(LANG_PKG[self.config.lang]['dialog_pref_lblIntvl'])
+        self.lblIntvl.setToolTip(LANG_PKG[self.config.lang]['dialog_pref_lblIntvl_tooltip'])
+        self.lblLang.setText(LANG_PKG[self.config.lang]['dialog_pref_lblLang'])
+        current_idx = self.comboLang.currentIndex()
+        self.comboLang.clear()
+        self.comboLang.addItems(LANG_PKG[self.config.lang]['dialog_pref_comboLang'])
+        self.comboLang.setCurrentIndex(current_idx)
+        self.btnOk.setText(LANG_PKG[self.config.lang]['btnOK'])
+        self.btnCancel.setText(LANG_PKG[self.config.lang]['btnCancel'])
+
 
 class DialogAddVoc(QtWidgets.QDialog):
 
-    def __init__(self, db, parent=None):
+    def __init__(self, db, config, parent=None):
         super().__init__(parent)
         self.db = db
+        self.config = config
 
         self.btnAdd = QtWidgets.QPushButton('Add')
         self.btnCancel = QtWidgets.QPushButton('Cancel')
@@ -529,13 +646,16 @@ class DialogAddVoc(QtWidgets.QDialog):
         self.btnUpdate.clicked.connect(self._update)
         self.editVerb.editingFinished.connect(self._check_exist)
 
+        self.lblVerb = QtWidgets.QLabel('Verb')
+        self.lblExp = QtWidgets.QLabel('Explanation')
         thisLayout = QtWidgets.QVBoxLayout()
-        thisLayout.addWidget(QtWidgets.QLabel('Verb'))
+        thisLayout.addWidget(self.lblVerb)
         thisLayout.addWidget(self.editVerb)
-        thisLayout.addWidget(QtWidgets.QLabel('Explanation'))
+        thisLayout.addWidget(self.lblExp)
         thisLayout.addWidget(self.editExp)
         thisLayout.addLayout(btnLayout)
         self.setLayout(thisLayout)
+        self.apply_lang()
 
     def _add(self):
         verb = self.editVerb.text().strip()
@@ -563,23 +683,33 @@ class DialogAddVoc(QtWidgets.QDialog):
             self.btnUpdate.setDisabled(True)
             self.editExp.clear()
 
+    def apply_lang(self):
+        self.setWindowTitle(LANG_PKG[self.config.lang]['dialog_addvoc_title'])
+        self.btnAdd.setText(LANG_PKG[self.config.lang]['dialog_addvoc_btnAdd'])
+        self.btnCancel.setText(LANG_PKG[self.config.lang]['dialog_addvoc_btnCancel'])
+        self.btnUpdate.setText(LANG_PKG[self.config.lang]['dialog_addvoc_btnUpdate'])
+        self.lblVerb.setText(LANG_PKG[self.config.lang]['dialog_addvoc_lblVerb'])
+        self.lblExp.setText(LANG_PKG[self.config.lang]['dialog_addvoc_lblExp'])
+
 
 class DialogBrowse(QtWidgets.QDialog):
 
-    def __init__(self, db, parent=None):
+    def __init__(self, db, config, parent=None):
         super().__init__(parent)
         self.db = db
+        self.config = config
 
+        self.setWindowTitle(LANG_PKG[config.lang]['dialog_browse_title'])
         self.setWindowFlags(QtCore.Qt.Window)
         self.setMinimumWidth(900)
         self.resize(QtCore.QSize(900, 600))
         self.setModal(False)
 
-        btn = QtWidgets.QPushButton('Refresh')
-        btn.clicked.connect(self._refresh)
+        self.btnRefresh = QtWidgets.QPushButton(LANG_PKG[config.lang]['dialog_browse_btnRefresh'])
+        self.btnRefresh.clicked.connect(self._refresh)
         btnLayout = QtWidgets.QHBoxLayout()
-        btnLayout.setAlignment(QtCore.Qt.AlignHCenter)
-        btnLayout.addWidget(btn)
+        btnLayout.setAlignment(QtCore.Qt.AlignRight)
+        btnLayout.addWidget(self.btnRefresh)
 
         self.dbTable = QtWidgets.QTableWidget()
         area = QtWidgets.QScrollArea()
@@ -587,8 +717,8 @@ class DialogBrowse(QtWidgets.QDialog):
         area.setWidgetResizable(True)
         area.setAlignment(QtCore.Qt.AlignTop)
         thisLayout = QtWidgets.QVBoxLayout()
-        thisLayout.addLayout(btnLayout)
         thisLayout.addWidget(area)
+        thisLayout.addLayout(btnLayout)
         self.setLayout(thisLayout)
         self._refresh()
 
@@ -605,6 +735,10 @@ class DialogBrowse(QtWidgets.QDialog):
         self.dbTable.resizeRowsToContents()
         self.dbTable.resizeColumnsToContents()
 
+    def apply_lang(self):
+        self.setWindowTitle(LANG_PKG[self.config.lang]['dialog_browse_title'])
+        self.btnRefresh.setText(LANG_PKG[self.config.lang]['dialog_browse_btnRefresh'])
+
 
 class MenuBar(QtWidgets.QMenuBar):
 
@@ -612,40 +746,54 @@ class MenuBar(QtWidgets.QMenuBar):
         super().__init__(parent)
 
         self.actionConfig = QtWidgets.QAction("Config Tense and Mood")
+        self.actionPref = QtWidgets.QAction('Preference')
         self.actionAddVoc = QtWidgets.QAction("Add Vocabulary")
         self.actionAddVoc.setShortcut('Ctrl+N')
         self.actionBrowse = QtWidgets.QAction("Browse Glossary")
-        menuConfig = self.addMenu("&Config")
-        menuConfig.addAction(self.actionConfig)
-        menuGloss = self.addMenu("&Glossary")
-        menuGloss.addAction(self.actionAddVoc)
-        menuGloss.addAction(self.actionBrowse)
+        self.actionStats = QtWidgets.QAction('Statistics')
+        self.menuConfig = self.addMenu("&Config")
+        self.menuConfig.addAction(self.actionConfig)
+        self.menuConfig.addAction(self.actionPref)
+        self.menuGloss = self.addMenu("&Glossary")
+        self.menuGloss.addAction(self.actionAddVoc)
+        self.menuGloss.addAction(self.actionBrowse)
+        self.menuStats = self.addMenu("&Statistics")
+        self.menuStats.addAction(self.actionStats)
+
+    def apply_lang(self, lang_pkg):
+        self.actionConfig.setText(lang_pkg['action_config'])
+        self.actionPref.setText(lang_pkg['action_pref'])
+        self.actionAddVoc.setText(lang_pkg['action_addvoc'])
+        self.actionBrowse.setText(lang_pkg['action_browse'])
+        self.actionStats.setText(lang_pkg['action_stats'])
+        self.menuConfig.setTitle(lang_pkg['menu_config'])
+        self.menuGloss.setTitle(lang_pkg['menu_glossary'])
+        self.menuStats.setTitle(lang_pkg['menu_stats'])
 
 
 class StatusBar(QtWidgets.QStatusBar):
 
-    def __init__(self, parent=None):
+    def __init__(self, config, parent=None):
         super().__init__(parent)
+        self.config = config
         self.labelN1 = QtWidgets.QLabel()
         self.labelN2 = QtWidgets.QLabel()
         self.addPermanentWidget(self.labelN1)
         self.addPermanentWidget(self.labelN2)
 
     def refresh(self, n1, n2):
-        self.labelN1.setText(' {:d} entries to practice in exercise 1 '.format(n1))
-        self.labelN2.setText(' {:d} entries to practice in exercise 2'.format(n2))
+        self.labelN1.setText(LANG_PKG[self.config.lang]['status_msg1'].format(n1))
+        self.labelN2.setText(LANG_PKG[self.config.lang]['status_msg2'].format(n2))
 
 
 def launch():
-   
     app = QtWidgets.QApplication(sys.argv)
 
     window = MainWindow()
     window.show()
 
     sys.exit(app.exec_())
-    
-    
-if __name__ == '__main__':
 
+
+if __name__ == '__main__':
     launch()
