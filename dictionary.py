@@ -5,9 +5,6 @@
 _VOWELS = ('a', 'â', 'à', 'e', 'é', 'è', 'i', 'o', 'u')
 _DOUBLE_CONSONANTS = ('ch', 'gn',)
 
-# tense & moods currently available in the dictionray
-AVAILABLE_TENSE_MOODS = (0, 1, 2, 3, 8, 15)
-
 TENSE_MOODS = (
     ("présent", "indicatif"),
     ("passé composé", "indicatif"),
@@ -157,6 +154,11 @@ _VERBS_IRREG = {
         ("connais", "connais", "connaît", "connaissons", "connaissez", "connaissent"),
     ("connaître", "présent", "participe"): "connaissant",
     ("connaître", "passé", "participe"): "connu",
+    ("convaincre", "présent", "indicatif"):
+        ("convaincs", "convaincs", "convainc", "convainquons", "convainquez", "convainquent"),
+    ("convaincre", "futur", "indicatif"): "convainc",
+    ("convaincre", "présent", "participe"): "convainquant",
+    ("convaincre", "passé", "participe"): "convaincu",
     ("courir", "présent", "indicatif"):
         ("cours", "cours", "court", "courons", "courez", "courent"),
     ("courir", "futur", "indicatif"): "cour",

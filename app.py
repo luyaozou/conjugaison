@@ -7,7 +7,7 @@ from os.path import isfile
 from sqlite3 import Error as dbError
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtGui import QTextOption, QKeySequence
-from dictionary import TENSE_MOODS, AVAILABLE_TENSE_MOODS, PERSONS
+from dictionary import TENSE_MOODS, PERSONS
 from dictionary import conjug, conjug_all
 from config import Config, from_json_, to_json
 from db import AppDB
@@ -41,9 +41,13 @@ class MainWindow(QtWidgets.QMainWindow):
         thisLayout.addWidget(self.box2)
         thisLayout.addWidget(self.box3)
         centerWidget.setLayout(thisLayout)
-
         # set central widget
         self.setCentralWidget(centerWidget)
+
+        self.box1.btnCheck.clicked.connect(self.box3.btnClear.click)
+        self.box2.btnCheck.clicked.connect(self.box3.btnClear.click)
+        self.box1.btnGen.clicked.connect(self.box3.btnClear.click)
+        self.box2.btnGen.clicked.connect(self.box3.btnClear.click)
 
         self.dConfig = DialogConfig(parent=self)
         self.dAddVoc = DialogAddVoc(self.db, parent=self)
@@ -63,6 +67,11 @@ class MainWindow(QtWidgets.QMainWindow):
         menubar.actionConfig.triggered.connect(self._config)
         menubar.actionAddVoc.triggered.connect(self.dAddVoc.exec)
         menubar.actionBrowse.triggered.connect(self.dBrowse.exec)
+
+        self.statusBar.showMessage('Verify database', 1000)
+        self.setDisabled(True)
+        self.db.check_has_conjug()
+        self.setDisabled(False)
 
     def _config(self):
         # retrieve current checked tense mood pairs
@@ -123,6 +132,8 @@ class Box1(QtWidgets.QGroupBox):
         self.lblCk.setFixedWidth(30)
         self.lblExp = QtWidgets.QLabel()
         self.lblExp.setWordWrap(True)
+        self.lblExp.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                  QtWidgets.QSizePolicy.Minimum)
 
         self._answer = '*'  # to avoid matching empty input and give false correct
         self._entry_id = -1
@@ -174,7 +185,10 @@ class Box1(QtWidgets.QGroupBox):
                     self.lblVerb.setText(verb)
                     self.lblExp.setText(explanation)
                     self.lblPerson.setText(PERSONS[pers_idx])
-                    self.editInput.setText(PERSONS[pers_idx])
+                    if mood == 'impératif':
+                        pass
+                    else:
+                        self.editInput.setText(PERSONS[pers_idx])
                     self.lblTense.setText(tense)
                     self.lblMood.setText(mood)
                     self.editInput.setFocus()
@@ -188,6 +202,10 @@ class Box1(QtWidgets.QGroupBox):
         except TypeError:
             d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
                                       'Warning', 'No entry found')
+            d.exec_()
+        except KeyError as err:
+            d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, 'Warning',
+                                      'Conjugation not implemented. {:s}'.format(str(err)))
             d.exec_()
 
     def _ck(self):
@@ -303,6 +321,10 @@ class Box2(QtWidgets.QGroupBox):
             d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning,
                                       'Warning', 'No entry to practice today')
             d.exec_()
+        except KeyError as err:
+            d = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, 'Warning',
+                                      'Conjugation not implemented. {:s}'.format(str(err)))
+            d.exec_()
 
     def _ck(self):
         """ Check the answer """
@@ -339,6 +361,8 @@ class Box3(QtWidgets.QGroupBox):
         self.btnClear = QtWidgets.QPushButton('Clear')
         self.lblExp = QtWidgets.QLabel()
         self.lblExp.setWordWrap(True)
+        self.lblExp.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                  QtWidgets.QSizePolicy.Minimum)
         self.lblResult = QtWidgets.QTextEdit()
         self.lblResult.setTextInteractionFlags(QtCore.Qt.TextEditorInteraction)
         self.lblResult.setReadOnly(True)
@@ -371,13 +395,17 @@ class Box3(QtWidgets.QGroupBox):
             self.lblExp.setText(self.db.get_explanation(verb))
         except (KeyError, TypeError):
             self.lblResult.clear()
+            self.lblExp.clear()
         except (ValueError, IndexError) as err:
             self.lblResult.setText(str(err))
+            self.lblExp.clear()
         except dbError:
             self.lblResult.setText("Cannot find verb in glossary")
+            self.lblExp.clear()
 
     def _clear(self):
         self.editVerb.clear()
+        self.lblExp.clear()
         self.lblResult.clear()
 
 
@@ -392,9 +420,6 @@ class DialogConfig(QtWidgets.QDialog):
             ck = QtWidgets.QCheckBox(", ".join(_tm))
             self._cklist.append(ck)
             ckLayout.addWidget(ck)
-            if i not in AVAILABLE_TENSE_MOODS:
-                ck.setChecked(False)
-                ck.setDisabled(True)
         btnLayout = QtWidgets.QHBoxLayout()
         btnLayout.setAlignment(QtCore.Qt.AlignRight)
         self.btnOk = QtWidgets.QPushButton('Okay')

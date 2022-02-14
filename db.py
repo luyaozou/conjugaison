@@ -4,6 +4,7 @@ import sqlite3
 from math import log, ceil
 from datetime import datetime, date, timedelta
 from dictionary import TENSE_MOODS, PERSONS
+from dictionary import conjug
 
 
 class AppDB:
@@ -18,13 +19,13 @@ class AppDB:
     def num_expired_entries(self, enabled_tm_idx):
         enabled_idx_str = ','.join([str(i) for i in enabled_tm_idx])
         sql = """ SELECT COUNT(id) FROM practice_forward WHERE tense_mood_idx IN ({:s})
-                    AND DATE(expiration_date, 'localtime') < '{:s}'
-                """.format(enabled_idx_str, date.today().strftime('%Y-%m-%d'))
+            AND has_conjug = 1 AND DATE(expiration_date, 'localtime') < '{:s}'
+            """.format(enabled_idx_str, date.today().strftime('%Y-%m-%d'))
         self._c.execute(sql)
         n1 = self._c.fetchone()[0]
         sql = """ SELECT COUNT(id) FROM practice_backward WHERE tense_mood_idx IN ({:s})
-                            AND DATE(expiration_date, 'localtime') < '{:s}'
-                        """.format(enabled_idx_str, date.today().strftime('%Y-%m-%d'))
+            AND has_conjug = 1 AND DATE(expiration_date, 'localtime') < '{:s}'
+            """.format(enabled_idx_str, date.today().strftime('%Y-%m-%d'))
         self._c.execute(sql)
         n2 = self._c.fetchone()[0]
         return n1, n2
@@ -36,6 +37,7 @@ class AppDB:
             JOIN glossary ON {0:s}.verb_id = glossary.id 
         WHERE
             tense_mood_idx IN ({1:s})
+            AND has_conjug = 1 
             AND DATE(expiration_date, 'localtime') < '{2:s}' 
         ORDER BY RANDOM() LIMIT 1
         """.format(tbl, enabled_idx_str, date.today().strftime('%Y-%m-%d'))
@@ -104,6 +106,18 @@ class AppDB:
         VALUES (?, ?, ?, ?)"""
         for tbl in ('practice_forward', 'practice_backward'):
             self._c.executemany(sql.format(tbl), practice_tuple)
+            # update has_conjug upon insertion of new verb right away
+            sql_query = "SELECT id, tense_mood_idx, person_idx FROM {:s} WHERE verb = (?)".format(tbl)
+            self._c.execute(sql_query, (verb,))
+            sql_update = "UPDATE {:s} SET has_conjug = 1 WHERE id = (?)".format(tbl)
+            for id_, tm_idx, pers_idx in self._c.fetchall():
+                tense, mood = TENSE_MOODS[tm_idx]
+                try:
+                    ans = conjug(verb, tense, mood, pers_idx)
+                    if ans:
+                        self._c.execute(sql_update, (id_,))
+                except KeyError:
+                    pass
         self._conn.commit()
 
     def update_voc(self, verb, explanation):
@@ -126,6 +140,22 @@ class AppDB:
         self._c.execute("SELECT verb, explanation FROM glossary ORDER BY verb")
         return self._c.fetchall()
 
+    def check_has_conjug(self):
+        """ Check if entry has conjugation """
+        for tbl in ['practice_forward', 'practice_backward']:
+            sql_query = "SELECT id, verb, tense_mood_idx, person_idx FROM {:s} WHERE has_conjug = 0".format(tbl)
+            self._c.execute(sql_query)
+            sql_update = "UPDATE {:s} SET has_conjug = 1 WHERE id = (?)".format(tbl)
+            for id_, verb, tm_idx, pers_idx in self._c.fetchall():
+                tense, mood = TENSE_MOODS[tm_idx]
+                try:
+                    ans = conjug(verb, tense, mood, pers_idx)
+                    if ans:
+                        self._c.execute(sql_update, (id_, ))
+                except KeyError:
+                    pass
+        self._conn.commit()
+
     def close(self):
         self._conn.close()
 
@@ -142,14 +172,15 @@ def create_tbls(conn, c):
 
     # forward practice table
     sql = """ CREATE TABLE IF NOT EXISTS practice_forward (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        verb TEXT,
-        verb_id INTEGER,
-        tense_mood_idx INTEGER,
-        person_idx INTEGER,
-        correct_num INTEGER DEFAULT 0,
-        expiration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );"""
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            verb TEXT,
+            verb_id INTEGER,
+            tense_mood_idx INTEGER,
+            person_idx INTEGER,
+            correct_num INTEGER DEFAULT 0,
+            expiration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            has_conjug INTEGER DEFAULT 0
+        );"""
     c.execute(sql)
 
     # backward practice table
@@ -160,7 +191,8 @@ def create_tbls(conn, c):
             tense_mood_idx INTEGER,
             person_idx INTEGER,
             correct_num INTEGER DEFAULT 0,
-            expiration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            expiration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            has_conjug INTEGER DEFAULT 0
         );"""
     c.execute(sql)
 
