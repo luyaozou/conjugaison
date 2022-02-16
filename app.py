@@ -20,10 +20,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setStyleSheet('font-size: 12pt')
         self.setMinimumWidth(600)
-        self.setMinimumHeight(650)
-        self.resize(QtCore.QSize(800, 650))
+        self.setMinimumHeight(700)
+        self.resize(QtCore.QSize(800, 750))
 
         self.config = Config()
         if isfile('config.json'):
@@ -33,6 +32,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.config.nbt = 0
         self.config.nbc = 0
         self.setWindowTitle(LANG_PKG[self.config.lang]['main_windowtitle'])
+        self.setStyleSheet('font-size: {:d}pt'.format(self.config.font_size))
 
         self.db = AppDB('app.db')
 
@@ -63,7 +63,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dBrowse = DialogBrowse(self.db, self.config, parent=self)
         # apply config to dialogs
         self.dConfig.set_tense_mood(self.config.enabled_tm_idx)
-        self.dPref.accepted.connect(self.apply_lang)
+        self.dPref.accepted.connect(self.apply_pref)
 
         menubar = MenuBar(parent=self)
         self.setMenuBar(menubar)
@@ -108,9 +108,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self.dConfig.set_tense_mood(self.config.enabled_tm_idx)
 
     @QtCore.pyqtSlot()
-    def apply_lang(self):
-        # apply language package
+    def apply_pref(self):
         sleep(0.02)
+        # apply font
+        self.setStyleSheet('font-size: {:d}pt'.format(self.config.font_size))
+        # apply language package
         self.setWindowTitle(LANG_PKG[self.config.lang]['main_windowtitle'])
         self.box1.apply_lang()
         self.box2.apply_lang()
@@ -164,8 +166,9 @@ class Box1(QtWidgets.QGroupBox):
         self.lblTense = QtWidgets.QLabel()
         self.lblTense.setFixedWidth(120)
         self.lblMood = QtWidgets.QLabel()
-        self.lblMood.setFixedWidth(80)
+        self.lblMood.setFixedWidth(100)
         self.lblPerson = QtWidgets.QLabel()
+        self.lblPerson.setAligntment(QtCore.Qt.AlignLeft)
         self.editInput = QtWidgets.QLineEdit()
         self.btnGen = QtWidgets.QPushButton(LANG_PKG[config.lang]['box1_btnGen'])
         self.btnCheck = QtWidgets.QPushButton(LANG_PKG[config.lang]['box1_btnCheck'])
@@ -572,25 +575,32 @@ class DialogPref(QtWidgets.QDialog):
         self.config = config
         self.setWindowTitle('Configure Preferences')
 
-        self.lblIntvl = QtWidgets.QLabel('Retry interval')
-        self.lblIntvl.setToolTip('Every this number of trials, the verb that fails most will be brought back again')
+        self.lblIntvl = QtWidgets.QLabel()
         self.inpIntvl = QtWidgets.QSpinBox()
         self.inpIntvl.setMinimum(1)
         self.inpIntvl.setValue(config.retry_intvl)
-        self.lblLang = QtWidgets.QLabel('Language')
+        self.lblLang = QtWidgets.QLabel()
+        self.lblFontSize = QtWidgets.QLabel()
+        self.inpFontSize = QtWidgets.QSpinBox()
+        self.inpFontSize.setMinimum(10)
+        self.inpFontSize.setSuffix(' pt')
         self.comboLang = QtWidgets.QComboBox()
         self.comboLang.addItems(list(LANG_PKG.keys()))
         self.comboLang.setCurrentText(config.lang)
         prefLayout = QtWidgets.QFormLayout()
         prefLayout.addRow(self.lblIntvl, self.inpIntvl)
         prefLayout.addRow(self.lblLang, self.comboLang)
+        prefLayout.addRow(self.lblFontSize, self.inpFontSize)
 
         btnLayout = QtWidgets.QHBoxLayout()
         btnLayout.setAlignment(QtCore.Qt.AlignRight)
         self.btnOk = QtWidgets.QPushButton('Okay')
         self.btnCancel = QtWidgets.QPushButton("Cancel")
+        self.btnOk.setDefault(True)
         btnLayout.addWidget(self.btnCancel)
         btnLayout.addWidget(self.btnOk)
+
+        self.apply_lang()
 
         thisLayout = QtWidgets.QVBoxLayout()
         thisLayout.addLayout(prefLayout)
@@ -604,12 +614,14 @@ class DialogPref(QtWidgets.QDialog):
     def fetch_config(self):
         self.config.lang = list(LANG_PKG.keys())[self.comboLang.currentIndex()]
         self.config.retry_intvl = self.inpIntvl.value()
+        self.config.font_size = self.inpFontSize.value()
 
     def apply_lang(self):
         self.setWindowTitle(LANG_PKG[self.config.lang]['dialog_pref_title'])
         self.lblIntvl.setText(LANG_PKG[self.config.lang]['dialog_pref_lblIntvl'])
         self.lblIntvl.setToolTip(LANG_PKG[self.config.lang]['dialog_pref_lblIntvl_tooltip'])
         self.lblLang.setText(LANG_PKG[self.config.lang]['dialog_pref_lblLang'])
+        self.lblFontSize.setText(LANG_PKG[self.config.lang]['dialog_pref_lblFont'])
         current_idx = self.comboLang.currentIndex()
         self.comboLang.clear()
         self.comboLang.addItems(LANG_PKG[self.config.lang]['dialog_pref_comboLang'])

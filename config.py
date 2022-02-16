@@ -39,6 +39,7 @@ class Config:
         self.nbt = 0
         self.nbc = 0
         self.retry_intvl = 10
+        self.font_size = 12
 
 
 def _obj2dict(obj):
