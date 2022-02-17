@@ -188,6 +188,13 @@ class AppDB:
             self._c.execute(sql, (nft, nfc, nbt, nbc))
         self._conn.commit()
 
+    def get_stats(self):
+
+        self._c.execute("SELECT DATE(log_date), n_total_forward, n_correct_forward, "
+                        "n_total_backward, n_correct_backward FROM statistics")
+        res = self._c.fetchall()
+        return str(res)
+
     def close(self):
         self._conn.close()
 

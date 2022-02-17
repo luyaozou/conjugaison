@@ -61,6 +61,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dPref = DialogPref(self.config, parent=self)
         self.dAddVoc = DialogAddVoc(self.db, self.config, parent=self)
         self.dBrowse = DialogBrowse(self.db, self.config, parent=self)
+        self.dStats = DialogStats(self.db, self.config, parent=self)
         # apply config to dialogs
         self.dConfig.set_tense_mood(self.config.enabled_tm_idx)
         self.dPref.accepted.connect(self.apply_pref)
@@ -78,6 +79,7 @@ class MainWindow(QtWidgets.QMainWindow):
         menubar.actionPref.triggered.connect(self.dPref.exec)
         menubar.actionAddVoc.triggered.connect(self.dAddVoc.exec)
         menubar.actionBrowse.triggered.connect(self.dBrowse.exec)
+        menubar.actionStats.triggered.connect(self.dStats.exec)
         self.statusBar.showMessage(LANG_PKG[self.config.lang]['status_bar_msg'],
                                    1000)
         self.setDisabled(True)
@@ -121,6 +123,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dConfig.apply_lang()
         self.dAddVoc.apply_lang()
         self.dBrowse.apply_lang()
+        self.dStats.apply_lang()
         self.menuBar().apply_lang(LANG_PKG[self.config.lang])
         self.statusBar.refresh(*self.db.num_expired_entries(self.config.enabled_tm_idx))
 
@@ -164,11 +167,10 @@ class Box1(QtWidgets.QGroupBox):
         self.lblVerb = QtWidgets.QLabel()
         self.lblVerb.setStyleSheet('font-size: 14pt; color: #2c39cf; font: bold; ')
         self.lblTense = QtWidgets.QLabel()
-        self.lblTense.setFixedWidth(120)
+        self.lblTense.setFixedWidth(150)
         self.lblMood = QtWidgets.QLabel()
-        self.lblMood.setFixedWidth(100)
+        self.lblMood.setFixedWidth(150)
         self.lblPerson = QtWidgets.QLabel()
-        self.lblPerson.setAligntment(QtCore.Qt.AlignLeft)
         self.editInput = QtWidgets.QLineEdit()
         self.btnGen = QtWidgets.QPushButton(LANG_PKG[config.lang]['box1_btnGen'])
         self.btnCheck = QtWidgets.QPushButton(LANG_PKG[config.lang]['box1_btnCheck'])
@@ -177,7 +179,6 @@ class Box1(QtWidgets.QGroupBox):
         self.lblCk = QtWidgets.QLabel()
         self.lblCk.setFixedWidth(30)
         self.lblExp = QtWidgets.QLabel()
-        self.lblExp.setWordWrap(True)
         self.lblExp.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
                                   QtWidgets.QSizePolicy.Minimum)
         self.btnHelp = QtWidgets.QPushButton(LANG_PKG[config.lang]['box1_btnHelp'])
@@ -337,7 +338,8 @@ class Box2(QtWidgets.QGroupBox):
         self.lblCk.setFixedWidth(30)
         self.lblConjug = QtWidgets.QLabel()
         self.lblConjug.setStyleSheet('font-size: 14pt; color: #2c39cf; font: bold; ')
-
+        self.lblAns = QtWidgets.QLabel()
+        self.lblAns.setSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Maximum)
         self.btnGen.clicked.connect(self._gen)
         self.btnCheck.clicked.connect(self._ck)
 
@@ -350,6 +352,7 @@ class Box2(QtWidgets.QGroupBox):
 
         row3 = QtWidgets.QHBoxLayout()
         row3.setAlignment(QtCore.Qt.AlignRight)
+        row3.addWidget(self.lblAns)
         row3.addWidget(self.btnGen)
         row3.addWidget(self.btnCheck)
         row3.addWidget(self.btnHelp)
@@ -396,6 +399,7 @@ class Box2(QtWidgets.QGroupBox):
                 conjug_str = conjug(verb, tense, mood, pers_idx)
                 if conjug_str:
                     self.lblConjug.setText(conjug_str)
+                    self.lblAns.clear()
                     self.editVerb.setFocus()
                     self._answer = verb
                     self._entry_id = entry_id
@@ -430,10 +434,13 @@ class Box2(QtWidgets.QGroupBox):
             self.lblCk.setText('✓')
             self.lblCk.setStyleSheet('font-size: 14pt; color: #009933')
             self.config.nbc += 1
-            self._timer.start()
+            self._timer.start(1000)
         else:
             self.lblCk.setText('🞪')
             self.lblCk.setStyleSheet('font-size: 14pt; color: #D63333')
+            self.lblAns.setText(' '.join((self._answer,) + TENSE_MOODS[self._tm_idx]))
+            self.btnCheck.setDisabled(True)
+            self._timer.start(5000)
         try:
             self.db.update_res('practice_backward', self._entry_id, is_correct)
             self.sig_checked.emit()
@@ -584,6 +591,7 @@ class DialogPref(QtWidgets.QDialog):
         self.inpFontSize = QtWidgets.QSpinBox()
         self.inpFontSize.setMinimum(10)
         self.inpFontSize.setSuffix(' pt')
+        self.inpFontSize.setValue(config.font_size)
         self.comboLang = QtWidgets.QComboBox()
         self.comboLang.addItems(list(LANG_PKG.keys()))
         self.comboLang.setCurrentText(config.lang)
@@ -750,6 +758,28 @@ class DialogBrowse(QtWidgets.QDialog):
     def apply_lang(self):
         self.setWindowTitle(LANG_PKG[self.config.lang]['dialog_browse_title'])
         self.btnRefresh.setText(LANG_PKG[self.config.lang]['dialog_browse_btnRefresh'])
+
+
+class DialogStats(QtWidgets.QDialog):
+
+    def __init__(self, db, config, parent=None):
+        super().__init__(parent)
+        self.db = db
+        self.config = config
+
+        self.lbl = QtWidgets.QLabel()
+        self.lbl.setWordWrap(True)
+        self.lbl.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+
+        thisLayout = QtWidgets.QVBoxLayout()
+        thisLayout.addWidget(self.lbl)
+        self.setLayout(thisLayout)
+
+    def showEvent(self, ev):
+        self.lbl.setText(self.db.get_stats())
+
+    def apply_lang(self):
+        self.setWindowTitle(LANG_PKG[self.config.lang]['dialog_stats_title'])
 
 
 class MenuBar(QtWidgets.QMenuBar):

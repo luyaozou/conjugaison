@@ -112,6 +112,7 @@ _VERBS_IRREG = {
     ("aller", "passé", "participe"): "allé",
     ("appuyer", "présent", "indicatif"):
         ("appuie", "appuies", "appuie", "appuyons", "appuyez", "appuient"),
+    ("appuyer", "futur", "indicatif"): "appuie",
     ("apercevoir", "présent", "indicatif"):
         ("aperçois", "aperçois", "aperçoit", "apercevons", "apercevez", "aperçoivent"),
     ("apercevoir", "futur", "indicatif"): "apercev",
